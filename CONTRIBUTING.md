@@ -57,15 +57,28 @@ chore: configurar Git LFS y estructura de carpeta data
 ## Ramas
 
 - `main`: version estable del proyecto, siempre debe funcionar.
-- `feature/<nombre>`: para nuevas funcionalidades (ej: `feature/endpoint-predict`, `feature/upload-component`).
-- `fix/<nombre>`: para correccion de errores.
+- `feature/<integrante>-<tarea-corta>`: para nuevas funcionalidades.
+- `fix/<integrante>-<tarea-corta>`: para correccion de errores.
+
+Se incluye el nombre del integrante en la rama para que, con solo ver la lista de ramas en GitHub, quede claro quien esta trabajando en que. Se usa guion (`-`) y no barra (`/`) entre el nombre y la tarea, porque Git no permite que una rama y una "carpeta" de ramas compartan el mismo nombre (por ejemplo, `feature/juan` y `feature/juan/algo` no pueden coexistir), y esto evita ese conflicto.
+
+Ejemplos:
+
+```
+feature/julian-endpoint-predict
+feature/tengono-preprocesamiento-imagenes
+feature/jairo-componente-upload
+fix/julian-normalizacion-dataset
+```
 
 Flujo sugerido:
 
 ```bash
-git checkout -b feature/nombre-de-la-tarea
+git checkout main
+git pull origin main
+git checkout -b feature/tu-nombre-tu-tarea
 # trabajar y hacer commits siguiendo la convencion
-git push origin feature/nombre-de-la-tarea
+git push origin feature/tu-nombre-tu-tarea
 # abrir un Pull Request hacia main
 ```
 
