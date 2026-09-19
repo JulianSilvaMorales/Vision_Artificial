@@ -1,0 +1,14 @@
+# Configuracion de Git LFS para archivos pesados (dataset, modelos entrenados).
+# Esta lista es generica/preventiva. Debe ajustarse segun el formato final
+# que se use para el dataset limpio (ej: si son imagenes sueltas + CSV de labels,
+# un solo archivo .npy, .parquet, etc). Si se usa un formato no listado aqui,
+# agregar la linea correspondiente antes de subir esos archivos.
+
+*.zip filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
+*.png filter=lfs diff=lfs merge=lfs -text
+*.npy filter=lfs diff=lfs merge=lfs -text
+*.csv filter=lfs diff=lfs merge=lfs -text
+*.h5 filter=lfs diff=lfs merge=lfs -text
+*.pt filter=lfs diff=lfs merge=lfs -text

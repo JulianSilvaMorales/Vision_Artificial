@@ -1,0 +1,22 @@
+# Entornos virtuales de Python
+venv/
+env/
+
+# Cache de Python
+__pycache__/
+*.pyc
+
+# Variables de entorno / configuracion sensible
+.env
+
+# Checkpoints de Jupyter
+.ipynb_checkpoints/
+
+# Dependencias de Node (frontend)
+node_modules/
+
+# Modelos entrenados que NO se quieran versionar directamente
+# (si se decide versionarlos con Git LFS en vez de ignorarlos,
+# quitar o ajustar estas lineas y agregar la extension al .gitattributes)
+models/*.pt
+models/*.h5
