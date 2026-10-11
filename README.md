@@ -6,6 +6,10 @@ Proyecto para la materia de Vision Artificial. Incluye entrenamiento de modelos 
 
 (Agregar aqui una descripcion corta del problema que resuelve el proyecto, el dataset usado y el objetivo general.)
 
+## DATASET ORIGINAL 
+
+Lumbar Spine MRI Dataset: https://data.mendeley.com/datasets/k57fr854j2/2
+
 ## Integrantes
 
 | Nombre | Rol / Aporte |
