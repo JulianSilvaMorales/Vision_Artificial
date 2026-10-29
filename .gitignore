@@ -31,8 +31,6 @@ data/processed/train/
 data/processed/val/
 data/processed/test/
 
-# Cuadernos temporales de referencia (no se suben)
-notebooks/temporal/
 
 # Pesos y artefactos de entrenamiento (se publican en GitHub Releases)
 models/*.joblib
