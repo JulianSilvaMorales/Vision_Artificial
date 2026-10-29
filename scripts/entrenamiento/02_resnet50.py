@@ -1,11 +1,15 @@
 """Modelo 2 · ResNet-50 (ImageNet) con ajuste fino sobre el dataset de 35k.
 
-Congela conv1, bn1 y layer1 y reemplaza la capa final por Dropout + Linear(3). AdamW con tasa baja y coseno,
-sin aumento en linea (el aumento ya esta en los archivos). La mejor epoca se elige por F1 macro en val completo,
-con parada temprana. Cada epoca deja un estado para reanudar (--reanudar). El test se evalua una sola vez al final.
+Congela conv1, bn1 y layer1 y reemplaza la capa final por Dropout + Linear(3). AdamW con tasa baja y coseno.
+La mejor epoca se elige por F1 macro en val completo, con parada temprana. Cada epoca deja un estado para
+reanudar (--reanudar). El test se evalua una sola vez al final.
+
+Configuracion por defecto (elegida con validacion entre 5 variantes, ver docs/resultados/README.md): suavizado de
+etiquetas 0.1 y aumento en linea suave (rotacion 6 grados, desplazamiento 4 %, zoom 0.95-1.05, brillo y contraste
+10 %), ademas de las copias aumentadas del dataset. Para la configuracion inicial: --ls 0 --sin-aumento --epocas 8 --paciencia 3.
 
 Uso (en Ubuntu, desde la raiz del repo):
-    python scripts/entrenamiento/02_resnet50.py [--epocas 8] [--lr 1e-4] [--reanudar]
+    python scripts/entrenamiento/02_resnet50.py [--epocas 10] [--lr 1e-4] [--reanudar]
 """
 import argparse
 import sys
@@ -28,8 +32,10 @@ from src.utils.config import CLASES, MODELOS_DIR, RUNS_DIR, SEMILLA, fijar_semil
 SLUG, NOMBRE = "modelo2_resnet50", "2 · ResNet-50 ajustada"
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--epocas", type=int, default=8)
-ap.add_argument("--paciencia", type=int, default=3)
+ap.add_argument("--epocas", type=int, default=10)
+ap.add_argument("--paciencia", type=int, default=4)
+ap.add_argument("--ls", type=float, default=0.1, help="suavizado de etiquetas")
+ap.add_argument("--sin-aumento", action="store_true", help="sin aumento en linea")
 ap.add_argument("--lr", type=float, default=1e-4)
 ap.add_argument("--wd", type=float, default=0.01)
 ap.add_argument("--dropout", type=float, default=0.3)
@@ -56,7 +62,7 @@ params = [p for p in modelo.parameters() if p.requires_grad]
 opt = torch.optim.AdamW(params, lr=args.lr, weight_decay=args.wd)
 sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epocas)
 escala = torch.amp.GradScaler(DEV)
-crit = nn.CrossEntropyLoss()
+crit = nn.CrossEntropyLoss(label_smoothing=args.ls)
 hist, mejor_f1, mala, ep0 = [], -1.0, 0, 0
 
 if args.reanudar and ESTADO.exists():
@@ -65,7 +71,8 @@ if args.reanudar and ESTADO.exists():
     hist, mejor_f1, mala, ep0 = e["hist"], e["mejor_f1"], e["mala"], e["epoca"] + 1
     print(f"Reanudando desde la epoca {ep0 + 1} (mejor F1 val = {mejor_f1:.3f})")
 
-dl_tr = cargador(df.ruta.values[TR], df.y.values[TR], shuffle=True, batch=args.batch, workers=args.workers)
+dl_tr = cargador(df.ruta.values[TR], df.y.values[TR], shuffle=True, batch=args.batch, workers=args.workers,
+                 aumento=not args.sin_aumento)
 dl_va = cargador(df.ruta.values[VA], batch=128, workers=args.workers)
 yv = df.y.values[VA]
 for ep in range(ep0, args.epocas):
