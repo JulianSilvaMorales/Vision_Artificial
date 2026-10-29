@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DeepSpine · MVP de demostración</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div>
+    <h1>DeepSpine · clasificación de discos lumbares</h1>
+    <p class="sub">MVP de demostración del Hito 2: 4 modelos sobre recortes de RM sagital T2 (Degeneración, Normal, Protrusión)</p>
+  </div>
+  <div id="estado" class="estado">Conectando…</div>
+</header>
+<p class="aviso">Herramienta académica, <strong>no diagnóstica</strong>. Las etiquetas las asignaron estudiantes, sin radiólogo.</p>
+
+<nav>
+  <button class="tab activa" data-tab="caso">1 · Caso a caso</button>
+  <button class="tab" data-tab="subir">2 · Subir imagen</button>
+  <button class="tab" data-tab="simulacion">3 · Simulación</button>
+  <button class="tab" data-tab="modelos">4 · Modelos y métricas</button>
+</nav>
+
+<main>
+  <!-- 1. Caso a caso -->
+  <section id="tab-caso" class="panel activo">
+    <div class="dos-columnas">
+      <aside>
+        <h2>Casos de test</h2>
+        <p class="nota">45 originales de test (15 por clase). Ningún modelo los vio al entrenar.</p>
+        <div class="filtros">
+          <select id="filtro-clase" aria-label="Filtrar por clase"><option value="">Todas las clases</option></select>
+          <select id="filtro-nivel" aria-label="Filtrar por nivel"><option value="">Todos los niveles</option></select>
+        </div>
+        <div id="galeria" class="galeria"></div>
+      </aside>
+      <div>
+        <div id="caso-detalle" class="vacio">Elige un caso de la galería.</div>
+        <div id="caso-resultado"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Subir imagen -->
+  <section id="tab-subir" class="panel">
+    <h2>Subir el recorte de un disco</h2>
+    <p class="nota">PNG o JPG del recorte (ROI) de un disco, como los del dataset. Una imagen subida no tiene etiqueta real: se muestra solo lo que dicen los modelos.</p>
+    <input type="file" id="archivo" accept="image/*" aria-label="Imagen del recorte">
+    <div id="subir-resultado"></div>
+  </section>
+
+  <!-- 3. Simulación -->
+  <section id="tab-simulacion" class="panel">
+    <h2>Simulación de resultados</h2>
+    <p class="nota">Corre los 4 modelos sobre todos los casos de test, uno por uno, y arma en vivo la matriz de confusión de cada modelo. La columna <em>reproduce</em> comprueba que cada predicción es la misma que quedó registrada en la evaluación oficial (<code>docs/resultados/</code>).</p>
+    <p class="nota alerta">Los 45 casos están balanceados a propósito (15 por clase), así que su exactitud <strong>no</strong> es la del test oficial (768 imágenes, 73 % Protrusión). Las cifras oficiales están en la pestaña 4.</p>
+    <button id="btn-simular" class="principal">Ejecutar simulación</button>
+    <span id="sim-progreso"></span>
+    <div id="sim-resumen"></div>
+    <div id="sim-matrices" class="matrices"></div>
+    <table id="sim-tabla" class="tabla"></table>
+  </section>
+
+  <!-- 4. Modelos y métricas -->
+  <section id="tab-modelos" class="panel">
+    <h2>Modelos entrenados y métricas oficiales</h2>
+    <p class="nota">Evaluación oficial: los hiperparámetros se eligieron con validación y el test se evaluó una sola vez. <em>Test originales</em> = 768 imágenes en proporción natural; <em>test completo</em> = 5.253, balanceado con copias aumentadas.</p>
+    <table id="tabla-modelos" class="tabla"></table>
+    <div class="figuras">
+      <figure><img src="/resultados/comparacion/matrices_confusion_test_orig.png" alt="Matrices de confusión"><figcaption>Matrices de confusión · test originales</figcaption></figure>
+      <figure><img src="/resultados/comparacion/roc_test_orig.png" alt="Curvas ROC"><figcaption>ROC macro · test originales</figcaption></figure>
+      <figure><img src="/resultados/comparacion/barras_test.png" alt="Barras de exactitud y F1"><figcaption>Exactitud y F1 macro</figcaption></figure>
+    </div>
+  </section>
+</main>
+
+<footer id="pie">Documentación de la API: <a href="/docs" target="_blank">/docs</a></footer>
+<script src="app.js"></script>
+</body>
+</html>

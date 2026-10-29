@@ -11,6 +11,8 @@ Solo se versionan (con Git LFS) los pesos pequenos que forman parte del pipeline
 
 ## Modelos finales (en el GitHub Release)
 
+Release: [`modelos-v1.0`](https://github.com/JulianSilvaMorales/Vision_Artificial/releases/tag/modelos-v1.0). Para descargarlos y verificar su hash: `python scripts/descargar_modelos.py`.
+
 | Archivo | Modelo | Tamano | SHA-256 |
 |---|---|---|---|
 | `yolov8s_cls.pt` | 1 · YOLOv8s-cls (ultralytics) | 10,3 MB | `4993c3f972eccea9d1df3841c545b141735cf319639b8213bf5150f562e380e4` |

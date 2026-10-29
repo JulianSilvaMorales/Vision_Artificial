@@ -37,3 +37,6 @@ notebooks/temporal/
 # Pesos y artefactos de entrenamiento (se publican en GitHub Releases)
 models/*.joblib
 models/*.npz
+
+# Entorno virtual que crean webapp/iniciar_mvp.bat y webapp/iniciar_mvp.sh
+.venv-mvp*/
