@@ -127,7 +127,7 @@ Reglas que cumplen todos los scripts:
 
 ## Demo (MVP)
 
-> **Temporal:** MVP para la entrega del Hito 2. La webapp formal la desarrolla Juan Manuel Tengono a partir de este MVP (ver abajo); cuando exista, esta seccion se actualiza.
+> **TEMPORAL.** Este MVP existe solo para la demostracion del Hito 2. **No es la webapp final.** Cuando Juan Manuel Tengono tenga la webapp formal funcionando, debe **borrar los archivos temporales del MVP** (lista abajo) para no dejar archivos innecesarios en el repo, y reemplazar esta seccion.
 
 Aplicacion local (backend FastAPI + pagina web) que consume los 4 modelos y demuestra la **simulacion de resultados** y la **trazabilidad**: cada prediccion se puede seguir desde la imagen (paciente, nivel, etiqueta real) por cada paso de los modelos, y se comprueba que reproduce la evaluacion oficial. Usa 45 casos de test incluidos en el repo, asi que no necesita el dataset de 35k ni GPU. Funciona en Windows, Linux y macOS.
 
@@ -152,12 +152,28 @@ El MVP ya resuelve el consumo de los 4 modelos; falta la aplicacion ordenada y p
    - una pagina por cada pestana del MVP en `pages/`;
    - el diagrama de trazabilidad, las tarjetas de prediccion y las matrices en `components/`.
 3. **Conectar React con el backend:** `CORSMiddleware` en `webapp/backend/main.py` para el puerto de desarrollo de React. En produccion, servir la *build* de React desde FastAPI.
-4. **Retirar `webapp/frontend/mvp/`** cuando React cubra las 4 pestanas, y actualizar esta seccion y `webapp/README.md`.
-5. **Mantener:**
+4. **Borrar los archivos temporales del MVP** cuando la webapp formal cubra lo que hace el MVP (caso a caso, subir imagen, simulacion y metricas). Ver la tabla de abajo.
+5. **Mantener en la webapp formal:**
    - el aviso "academica, no diagnostica";
    - la aclaracion de que los casos de demostracion no dan la exactitud oficial;
    - la comprobacion de reproducibilidad;
    - CPU por defecto.
+
+**Que borrar y que conservar al terminar la webapp formal**
+
+| Archivo o carpeta | Que hacer | Por que |
+|---|---|---|
+| `webapp/frontend/mvp/` (index.html, styles.css, app.js) | **Borrar** | Es la pagina temporal; la reemplaza el frontend en React |
+| `webapp/iniciar_mvp.bat`, `webapp/iniciar_mvp.sh` | **Borrar** (o reemplazarlos por scripts de arranque de la webapp formal) | Arrancan el MVP |
+| `.venv-mvp*/` en `.gitignore` | **Quitar la linea** si se borran los scripts | Solo la usan esos scripts |
+| `app.mount("/", ...)` en `webapp/backend/main.py` | **Cambiar** para servir la *build* de React, o quitarlo | Hoy sirve la pagina del MVP |
+| `webapp/README.md` y la seccion *Demo (MVP)* de este README | **Reescribir** para la webapp formal | Describen el MVP |
+| `webapp/backend/` (API, esquemas, servicios) | **Conservar** y mejorar | Es la base del backend formal; no es temporal |
+| `src/inference/predictor.py` | **Conservar** | Logica de los 4 modelos; la usa cualquier backend |
+| `scripts/descargar_modelos.py` | **Conservar** | Descarga y verifica los pesos del Release |
+| `data/demo/` y `scripts/demo/` | **Conservar** si la webapp formal mantiene la simulacion y la trazabilidad (recomendado para la sustentacion); si no, borrar los dos juntos | Son los casos de test de la demostracion |
+
+No borres nada del MVP antes de que la webapp formal funcione: hasta entonces es lo unico que demuestra los modelos.
 
 ## Arquitectura del proyecto
 
