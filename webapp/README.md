@@ -1,28 +1,92 @@
 # webapp · MVP de demostración (temporal)
 
-> **Estado:** MVP para la entrega del Hito 2 (2026-10-30). Demuestra la **simulación de resultados** y la **trazabilidad** de los 4 modelos. La webapp formal (backend ordenado y frontend en React) la desarrolla Juan Manuel Tengonó a partir de esta API. Cuando exista, este documento y la carpeta `frontend/mvp/` se reemplazan.
+> **Estado:** MVP para la entrega del Hito 2 (2026-10-30). Demuestra la **simulación de resultados** y la **trazabilidad** de los 4 modelos. La webapp formal (backend ordenado y frontend en React) la desarrolla Juan Manuel Tengonó a partir de esta API (ver [Siguientes pasos](#siguientes-pasos-para-la-webapp-formal)). Cuando exista, este documento y la carpeta `frontend/mvp/` se reemplazan.
 
-Se ejecuta en local. No hace falta desplegarlo ni tener el dataset de 35k: usa 45 casos de test incluidos en el repo (`data/demo/`) y los pesos del GitHub Release.
+Se ejecuta en local, en **Windows, Linux o macOS**, sin GPU. No hace falta desplegarlo ni tener el dataset de 35k: usa 45 casos de test incluidos en el repo (`data/demo/`) y los pesos de los 4 modelos del [GitHub Release `modelos-v1.0`](https://github.com/JulianSilvaMorales/Vision_Artificial/releases/tag/modelos-v1.0).
 
-## Ejecutar
+## Guía rápida de arranque
 
-Requisitos: Python 3.12 (probado en Ubuntu 24.04 / WSL2) y Git LFS para que las imágenes de `data/demo/` se descarguen al clonar. Funciona en CPU; no necesita GPU.
+### 1. Requisitos (una sola vez por equipo)
+
+| Programa | Para qué | Cómo comprobarlo |
+|---|---|---|
+| **Git** | Clonar el repositorio | `git --version` |
+| **Git LFS** | Descargar las imágenes de `data/demo/` (sin Git LFS llegan como archivos de texto y la demo avisa del error) | `git lfs version` |
+| **Python 3.12 o superior** (probado con 3.12 en Ubuntu y 3.14 en Windows) | Ejecutar el backend y los modelos | `python --version` (Windows) o `python3 --version` |
+| Internet, la primera vez | Instalar dependencias (~1 GB con PyTorch) y descargar los modelos (~121 MB) | — |
+
+Instalación:
+- **Windows:** Git desde https://git-scm.com (ya trae Git LFS). Python desde https://www.python.org/downloads/ (marca *"Add python.exe to PATH"*).
+- **Ubuntu / WSL:** `sudo apt install git git-lfs python3 python3-venv`.
+- **macOS:** `brew install git git-lfs python@3.12`.
+
+Después, una sola vez: `git lfs install`.
+
+### 2. Clonar el repositorio
 
 ```
-git lfs install
 git clone https://github.com/JulianSilvaMorales/Vision_Artificial.git
 cd Vision_Artificial
-python3 -m venv venv && source venv/bin/activate        # Windows: python -m venv venv && venv\Scripts\activate
-pip install -r webapp/backend/requirements.txt
-python scripts/descargar_modelos.py                      # baja los 4 pesos del Release y verifica su SHA-256
-uvicorn webapp.backend.main:app --port 8000
 ```
 
-Abrir **http://localhost:8000**. La documentación interactiva de la API está en http://localhost:8000/docs.
+### 3. Arrancar con un solo comando
 
-- La primera predicción tarda unos segundos, porque carga los 4 modelos. Después, ~0,2 s por imagen con los 4 modelos en CPU.
-- `DEEPSPINE_DISPOSITIVO=cuda` usa la GPU. En CPU las predicciones reproducen exactamente la evaluación oficial; en GPU la ResNet usa otra precisión numérica y algún caso límite puede cambiar.
-- En Windows sin WSL no se ha probado.
+| Sistema | Comando (desde la raíz del repo) |
+|---|---|
+| **Windows** | `webapp\iniciar_mvp.bat`, o doble clic en `webapp/iniciar_mvp.bat` |
+| **Linux / macOS / WSL** | `bash webapp/iniciar_mvp.sh` |
+
+El script hace todo en orden:
+1. Crea un entorno virtual `.venv-mvp/` en la raíz del repo (solo la primera vez).
+2. Instala `webapp/backend/requirements.txt` (solo la primera vez; tarda varios minutos).
+3. Ejecuta `git lfs pull` para traer las imágenes de demostración, y `scripts/descargar_modelos.py` para bajar los 4 pesos a `models/` y verificar su SHA-256. Si ya están, no los vuelve a descargar.
+4. Levanta el servidor y, en Windows, abre el navegador en **http://localhost:8000**.
+
+Las siguientes veces solo hace los pasos 3 y 4, en unos segundos. Para detener el servidor: `Ctrl + C` en la terminal.
+
+### 4. Paso a paso manual (si prefieres no usar el script)
+
+Windows (PowerShell o CMD):
+```
+python -m venv .venv-mvp
+.venv-mvp\Scripts\activate
+pip install -r webapp\backend\requirements.txt
+git lfs pull
+python scripts\descargar_modelos.py
+python -m uvicorn webapp.backend.main:app --port 8000
+```
+
+Linux / macOS / WSL:
+```
+python3 -m venv .venv-mvp
+source .venv-mvp/bin/activate
+pip install -r webapp/backend/requirements.txt
+git lfs pull
+python scripts/descargar_modelos.py
+python -m uvicorn webapp.backend.main:app --port 8000
+```
+
+Abrir **http://localhost:8000**. La documentación interactiva de la API está en **http://localhost:8000/docs**.
+
+### 5. Comprobar que todo está bien
+La barra superior de la página debe decir **"4 modelos cargables · CPU · commit … · 45 casos"** en verde. Si está en rojo, dice qué falta. También se puede consultar `http://localhost:8000/api/salud`.
+
+### Problemas frecuentes
+
+| Síntoma | Causa | Solución |
+|---|---|---|
+| Barra roja: *"Faltan modelos"* | No se descargaron los pesos | `python scripts/descargar_modelos.py` (necesita internet) |
+| Barra roja: *"Las imágenes de data/demo no se descargaron"*, o miniaturas rotas | Se clonó sin Git LFS | `git lfs install` y luego `git lfs pull` |
+| `ERROR: SHA-256 no coincide` al descargar | Descarga corrupta o incompleta | Volver a ejecutar el script; borra el archivo malo solo |
+| Error al cargar `svm.joblib` o `random_forest.joblib` | Otra versión de scikit-learn | Debe ser la 1.9.1: `pip install scikit-learn==1.9.1` |
+| `[Errno 98]` / `10048`: el puerto está en uso | Ya hay algo en el 8000 | Usar otro puerto: `... uvicorn webapp.backend.main:app --port 8001` |
+| `ModuleNotFoundError: No module named 'webapp'` o `'src'` | Se ejecutó desde otra carpeta | Ejecutar desde la **raíz** del repo |
+| La primera predicción tarda varios segundos | Se están cargando los 4 modelos | Normal; luego son ~0,2 s por imagen |
+| `pip` no encuentra `torch` para tu versión de Python | Python demasiado viejo o demasiado nuevo | Usar Python 3.12 a 3.14 |
+| Windows: `OSError: [Errno 2] No such file or directory: ...torch\include\...` al instalar | El repo está en una ruta muy larga y Windows limita las rutas a 260 caracteres | Clonar en una ruta corta (por ejemplo `C:\Users\<usuario>\Documents\Vision_Artificial`) o activar las rutas largas de Windows |
+| Usas el mismo clon desde Windows y desde WSL | El `.venv-mvp` de un sistema no sirve en el otro | En WSL: `MVP_VENV=.venv-mvp-linux bash webapp/iniciar_mvp.sh` |
+
+Opcional: con GPU NVIDIA y PyTorch con CUDA, `DEEPSPINE_DISPOSITIVO=cuda` usa la GPU. En CPU (por defecto) las predicciones reproducen exactamente la evaluación oficial; en GPU la ResNet usa otra precisión numérica y algún caso límite puede cambiar.
 
 ## Qué muestra (pestañas)
 
@@ -57,18 +121,22 @@ Arquitectura en capas: `api/routes/` (HTTP) → `schemas/` (validación con Pyda
 
 | Método y ruta | Qué hace |
 |---|---|
-| `GET /api/salud` | Estado: modelos disponibles o faltantes, dispositivo, commit, número de casos |
+| `GET /api/salud` | Estado: modelos disponibles o faltantes, imágenes de demostración, dispositivo, commit, número de casos |
 | `GET /api/modelos` | Los 4 modelos: SHA-256, configuración, hiperparámetro elegido y métricas oficiales |
 | `GET /api/casos?clase=&nivel=` | Lista de casos de demostración, con filtros |
 | `GET /api/casos/{id}/imagen` | PNG del caso |
 | `POST /api/casos/{id}/predecir` | Los 4 modelos sobre el caso: predicciones, `pasos` (traza), ensamble, `comparacion` con la etiqueta real y con lo registrado |
 | `POST /api/predecir` | Igual, para una imagen subida (`multipart/form-data`, campo `imagen`, máx. 5 MB) |
 | `POST /api/casos/simulacion?clase=&nivel=` | Simulación completa en el servidor: exactitud, matriz de confusión y reproducibilidad por modelo |
+| `GET /resultados/...` | Archivos de `docs/resultados/` (figuras y tablas oficiales), solo lectura |
 
 ## Archivos
 
 ```
 webapp/
+├── README.md                      # esta guia
+├── iniciar_mvp.bat                # arranque en Windows (un comando)
+├── iniciar_mvp.sh                 # arranque en Linux / macOS / WSL
 ├── backend/
 │   ├── main.py                    # app FastAPI; sirve la API, /resultados y la pagina del MVP
 │   ├── requirements.txt           # dependencias minimas para ejecutar el MVP
@@ -81,8 +149,32 @@ webapp/
     └── mvp/                       # index.html, styles.css, app.js (sin dependencias; temporal)
 ```
 
-## Para la webapp formal (Tengonó)
-- Los endpoints y esquemas de arriba se pueden reutilizar tal cual desde React (`frontend/src/services/`).
-- `frontend/mvp/` se puede borrar cuando exista el frontend en React. Entonces hay que quitar en `main.py` el `app.mount("/", ...)` o apuntarlo a la build de React.
-- La lógica de los modelos está en `src/inference/predictor.py`; el backend no necesita saber de embeddings, escaladores ni PCA.
-- Herramienta académica, no diagnóstica: mantener el aviso visible.
+## Siguientes pasos para la webapp formal
+
+Responsable: **Juan Manuel Tengonó**. El MVP deja resuelto el consumo de los modelos; lo que falta es la aplicación ordenada y presentable.
+
+**Qué se reutiliza tal cual**
+- `src/inference/predictor.py`: la lógica de los 4 modelos (`predecir`, `predecir_todos`, `trazar`). El backend no necesita saber de embeddings, escaladores ni PCA.
+- La API de `webapp/backend/`: endpoints, esquemas y servicios. Ya sigue la arquitectura en capas del README.
+- `scripts/descargar_modelos.py` y los casos de `data/demo/`.
+
+**Qué hay que construir**
+1. **Frontend en React** en `webapp/frontend/src/` (estructura `components/`, `pages/`, `services/` del README):
+   - las llamadas a la API van en `services/` (por ejemplo, `api.js` con `fetch` a `/api/...`);
+   - una vista por cada pestaña del MVP (caso a caso, subir imagen, simulación, modelos y métricas) como `pages/`;
+   - el diagrama de trazabilidad, las tarjetas de predicción y las matrices como `components/`.
+2. **Conectar React con el backend:**
+   - en desarrollo, React en su propio puerto (por ejemplo, Vite en 5173) llamando a `http://localhost:8000/api`. Hay que agregar `CORSMiddleware` en `main.py` para ese origen;
+   - en producción, servir la *build* de React desde FastAPI, cambiando el `app.mount("/", ...)` de `main.py` para que apunte a `webapp/frontend/dist`.
+3. **Retirar `webapp/frontend/mvp/`** cuando la versión en React cubra sus 4 pestañas, y actualizar este README y la sección *Demo (MVP)* del README raíz.
+4. **Mantener:**
+   - el aviso "herramienta académica, no diagnóstica";
+   - la aclaración de que los 45 casos son balanceados y no dan la exactitud oficial;
+   - la comprobación de reproducibilidad (columna *reproduce*);
+   - **CPU por defecto**, para reproducir la evaluación oficial.
+5. **Opcional:**
+   - pruebas en `tests/` para los endpoints, con `fastapi.testclient`;
+   - un historial de predicciones;
+   - una opción del ensamble en la interfaz, si el equipo la quiere.
+
+**Reglas que no cambian:** no reentrenar ni cambiar los pesos sin publicar un nuevo Release con sus hashes, y no tocar `data/demo/casos.csv` a mano (se regenera con su script).
