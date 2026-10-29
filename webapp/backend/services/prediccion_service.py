@@ -16,6 +16,13 @@ def predictor():
     return Predictor(MODELOS_DIR, dispositivo=DISPOSITIVO)
 
 
+def precargar():
+    """Carga los 4 modelos antes de recibir peticiones; devuelve los segundos que tardo."""
+    t0 = time.perf_counter()
+    predictor().cargar_todos()
+    return round(time.perf_counter() - t0, 1)
+
+
 def _traza(imagen):
     tr = predictor().trazar(imagen)
     tr["imagen_224"] = a_base64_png(tr["imagen_224"])
