@@ -45,7 +45,9 @@ for slug in MODELOS + EXTRAS:
         continue
     nombre, S, es_prob = cargar_puntajes(slug, df)
     puntajes[nombre] = (S, es_prob, slug in MODELOS)
-    tablas.append(tabla_modelo(nombre, S, es_prob, df, conj))
+    tabla = tabla_modelo(nombre, S, es_prob, df, conj)
+    tabla.round(5).to_csv(RESULTADOS_DIR / slug / "metricas.csv", index=False)   # recalculada con las metricas actuales
+    tablas.append(tabla)
 # ensamble de los 4 modelos oficiales: promedio de puntajes (el SVM pasa por softmax; no son probabilidades calibradas)
 if all(s in [p for p in MODELOS if (RESULTADOS_DIR / p / "puntajes.npz").exists()] for s in MODELOS):
     def a_prob(S, es_prob):
@@ -59,7 +61,8 @@ if all(s in [p for p in MODELOS if (RESULTADOS_DIR / p / "puntajes.npz").exists(
 T = pd.concat(tablas, ignore_index=True)
 T.round(4).to_csv(out / "tabla_metricas_larga.csv", index=False)
 
-for met in ("exactitud", "precision_macro", "recall_macro", "f1_macro", "exactitud_balanceada", "roc_auc_macro"):
+for met in ("exactitud", "precision_macro", "recall_macro", "f1_macro", "exactitud_balanceada", "roc_auc_macro",
+            "mse_brier"):
     tab = T.pivot(index="modelo", columns="conjunto", values=met)[VISTA]
     tab["brecha_train_test_orig"] = tab.train_orig - tab.test_orig
     tab.round(4).to_csv(out / f"tabla_{met}.csv")
