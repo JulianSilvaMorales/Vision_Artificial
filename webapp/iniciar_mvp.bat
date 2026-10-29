@@ -31,7 +31,8 @@ echo [3/4] Imagenes de demostracion (Git LFS) y modelos del Release ...
 where git >nul 2>nul && git lfs pull >nul 2>nul
 "%VENV%\Scripts\python.exe" scripts\descargar_modelos.py || (echo [ERROR] No se pudieron descargar los modelos. & pause & exit /b 1)
 
-echo [4/4] Iniciando el servidor en http://localhost:8000  (Ctrl+C para detenerlo)
-if not defined MVP_SIN_NAVEGADOR start "" http://localhost:8000
+echo [4/4] Iniciando el servidor en http://127.0.0.1:8000  (Ctrl+C para detenerlo)
+echo       Primero carga los 4 modelos; el navegador se abre solo cuando esta listo.
+if not defined MVP_SIN_NAVEGADOR set "MVP_ABRIR_NAVEGADOR=http://127.0.0.1:8000"
 "%VENV%\Scripts\python.exe" -m uvicorn webapp.backend.main:app --port 8000
 pause
