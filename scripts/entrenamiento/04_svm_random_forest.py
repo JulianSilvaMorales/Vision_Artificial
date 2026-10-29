@@ -1,10 +1,14 @@
-"""Modelos 3 y 4 · SVM (RBF) y Random Forest sobre los embeddings congelados (+ regresion logistica y KNN como extras).
+"""Modelos 3 y 4 · SVM (RBF) y Random Forest sobre embeddings de ResNet-50 (+ regresion logistica y KNN como extras).
 
+--extractor ajustada (oficial): embeddings de la ResNet-50 del modelo 2. Resultados en docs/resultados/modelo3_svm,
+    modelo4_random_forest, extra_*; modelos en models/svm.joblib y models/random_forest.joblib.
+--extractor imagenet (comparacion): embeddings de ResNet-50 ImageNet sin ajustar. Resultados en
+    docs/resultados/ablacion_imagenet_*; modelos fuera del repo.
 StandardScaler y PCA se ajustan solo con train (regla de data leakage). Cada clasificador elige sus hiperparametros
 por F1 macro en val completo; el test se evalua una sola vez al final. Requiere haber corrido 03_embeddings.py.
 
 Uso (en Ubuntu, desde la raiz del repo):
-    python scripts/entrenamiento/04_svm_random_forest.py [--pca 256] [--sin-extras]
+    python scripts/entrenamiento/04_svm_random_forest.py [--extractor ajustada|imagenet] [--pca 256] [--sin-extras]
 """
 import argparse
 import sys
@@ -28,6 +32,7 @@ from src.training.evaluacion import cerrar_modelo
 from src.utils.config import CLASES, MODELOS_DIR, RUNS_DIR, SEMILLA, fijar_semilla
 
 ap = argparse.ArgumentParser()
+ap.add_argument("--extractor", choices=("ajustada", "imagenet"), default="ajustada")
 ap.add_argument("--pca", type=int, default=256)
 ap.add_argument("--sin-extras", action="store_true")
 args = ap.parse_args()
@@ -39,7 +44,10 @@ conj = conjuntos(df)
 TR, VA = (df.split == "train").values, conj["val_completo"]
 Y = df.y.values
 
-z = np.load(RUNS_DIR / "embeddings_resnet50_imagenet.npz")
+OFICIAL = args.extractor == "ajustada"
+EXTRACTOR = ("ResNet-50 del modelo 2 (models/resnet50.pt), fc=Identity" if OFICIAL else "torchvision resnet50 IMAGENET1K_V2 sin ajustar, fc=Identity")
+SUF = "" if OFICIAL else " (ImageNet congelada)"
+z = np.load(RUNS_DIR / f"embeddings_resnet50_{args.extractor}.npz")
 assert list(z["archivos"]) == df.archivo.tolist(), "Los embeddings no estan en el orden del indice; corre 03_embeddings.py"
 EMB = z["emb"]
 
@@ -67,23 +75,25 @@ def elegir(nombre, fabrica, rejilla, es_prob):
 
 
 def correr(slug, nombre, archivo, fabrica, rejilla, es_prob, descripcion):
+    if not OFICIAL:
+        slug, nombre, archivo = "ablacion_imagenet_" + slug.split("_", 1)[1], nombre + SUF, archivo + "_imagenet"
     print(f"\n{nombre}")
     m, pr, S, busqueda = elegir(nombre, fabrica, rejilla, es_prob)
-    config = dict(entrada="embeddings ResNet-50 ImageNet congelada (2048) -> StandardScaler -> PCA",
+    config = dict(entrada=f"embeddings (2048) de {EXTRACTOR} -> StandardScaler -> PCA",
                   pca_componentes=args.pca, pca_varianza_explicada=round(var_pca, 4), clasificador=descripcion,
                   rejilla=rejilla, busqueda_val=busqueda, elegido=pr, criterio="F1 macro en val completo",
                   salida="probabilidades" if es_prob else "decision_function (no son probabilidades)")
     cerrar_modelo(slug, nombre, S, es_prob, df, conj, config)
-    destino = (MODELOS_DIR if archivo.startswith(("svm", "random")) else RUNS_DIR) / f"{archivo}.joblib"
+    destino = (MODELOS_DIR if OFICIAL and archivo in ("svm", "random_forest") else RUNS_DIR) / f"{archivo}.joblib"
     joblib.dump(dict(modelo=m, params=pr, escalador=escalador, pca=pca, clases=CLASES, es_prob=es_prob,
-                     extractor="torchvision resnet50 IMAGENET1K_V2, fc=Identity, Resize 224, normalizacion ImageNet"),
+                     extractor=f"{EXTRACTOR}, Resize 224, normalizacion ImageNet"),
                 destino, compress=3)
     print("Guardado:", destino)
 
 
 correr("modelo3_svm", "3 · SVM (RBF) sobre embeddings", "svm",
        lambda **k: SVC(kernel="rbf", gamma="scale", decision_function_shape="ovr", random_state=SEMILLA, **k),
-       [dict(C=0.5), dict(C=2), dict(C=8)], False, "SVC kernel RBF, gamma='scale', uno contra el resto")
+       [dict(C=0.1), dict(C=0.5), dict(C=2), dict(C=8)], False, "SVC kernel RBF, gamma='scale', uno contra el resto")
 correr("modelo4_random_forest", "4 · Random Forest sobre embeddings", "random_forest",
        lambda **k: RandomForestClassifier(n_estimators=300, n_jobs=-1, random_state=SEMILLA, **k),
        [dict(max_depth=10), dict(max_depth=20), dict(max_depth=None)], True, "RandomForestClassifier, 300 arboles")
