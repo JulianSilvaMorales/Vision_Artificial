@@ -127,17 +127,37 @@ Reglas que cumplen todos los scripts:
 
 ## Demo (MVP)
 
-> **Temporal:** MVP para la entrega del Hito 2. La webapp formal la desarrolla Juan Manuel Tengono sobre la misma API; cuando exista, esta seccion se actualiza.
+> **Temporal:** MVP para la entrega del Hito 2. La webapp formal la desarrolla Juan Manuel Tengono a partir de este MVP (ver abajo); cuando exista, esta seccion se actualiza.
 
-Aplicacion local (backend FastAPI + pagina web) que consume los 4 modelos y demuestra la **simulacion de resultados** y la **trazabilidad**: cada prediccion se puede seguir desde la imagen (paciente, nivel, etiqueta real) por cada paso de los modelos, y se comprueba que reproduce la evaluacion oficial. Usa 45 casos de test incluidos en el repo, asi que no necesita el dataset de 35k.
+Aplicacion local (backend FastAPI + pagina web) que consume los 4 modelos y demuestra la **simulacion de resultados** y la **trazabilidad**: cada prediccion se puede seguir desde la imagen (paciente, nivel, etiqueta real) por cada paso de los modelos, y se comprueba que reproduce la evaluacion oficial. Usa 45 casos de test incluidos en el repo, asi que no necesita el dataset de 35k ni GPU. Funciona en Windows, Linux y macOS.
 
-```
-pip install -r webapp/backend/requirements.txt
-python scripts/descargar_modelos.py            # pesos del Release modelos-v1.0, con verificacion SHA-256
-uvicorn webapp.backend.main:app --port 8000    # abrir http://localhost:8000
-```
+**Arranque en un comando** (requisitos: Git, Git LFS y Python; desde la raiz del repo clonado):
 
-Instrucciones completas, pestanas, API y como se garantiza la trazabilidad: [`webapp/README.md`](webapp/README.md).
+| Sistema | Comando |
+|---|---|
+| Windows | `webapp\iniciar_mvp.bat` (o doble clic en el archivo) |
+| Linux / macOS / WSL | `bash webapp/iniciar_mvp.sh` |
+
+El script crea el entorno `.venv-mvp/`, instala las dependencias (solo la primera vez), descarga las imagenes de demostracion (Git LFS) y los 4 pesos del Release `modelos-v1.0` con verificacion SHA-256, y levanta el servidor en **http://localhost:8000**.
+
+**Guia completa** (requisitos e instalacion por sistema, paso a paso manual, comprobacion, problemas frecuentes, pestanas, API y trazabilidad): [`webapp/README.md`](webapp/README.md).
+
+### Siguiente paso: webapp formal (Juan Manuel Tengono)
+
+El MVP ya resuelve el consumo de los 4 modelos; falta la aplicacion ordenada y presentable. Detalle en [`webapp/README.md` · Siguientes pasos](webapp/README.md#siguientes-pasos-para-la-webapp-formal).
+
+1. **Reutilizar sin cambios** `src/inference/predictor.py` (logica de los modelos) y la API de `webapp/backend/` (endpoints, esquemas y servicios en capas).
+2. **Construir el frontend en React** en `webapp/frontend/src/`:
+   - llamadas a la API en `services/`;
+   - una pagina por cada pestana del MVP en `pages/`;
+   - el diagrama de trazabilidad, las tarjetas de prediccion y las matrices en `components/`.
+3. **Conectar React con el backend:** `CORSMiddleware` en `webapp/backend/main.py` para el puerto de desarrollo de React. En produccion, servir la *build* de React desde FastAPI.
+4. **Retirar `webapp/frontend/mvp/`** cuando React cubra las 4 pestanas, y actualizar esta seccion y `webapp/README.md`.
+5. **Mantener:**
+   - el aviso "academica, no diagnostica";
+   - la aclaracion de que los casos de demostracion no dan la exactitud oficial;
+   - la comprobacion de reproducibilidad;
+   - CPU por defecto.
 
 ## Arquitectura del proyecto
 
@@ -257,7 +277,8 @@ Pendiente de definir: como se distribuye el dataset de 35.007 imagenes (dentro d
   !models/preetiquetado_semilla_v2.pt
   ```
   El resto de los `.pt` y `.h5` de `models/` sigue ignorado.
-- `.gitattributes`: sin cambios.
+- `.gitignore` (entrenamiento y MVP): se ignoran el dataset descomprimido (`data/processed/train/`, `val/`, `test/` y su zip), `notebooks/temporal/`, los `models/*.joblib` y `models/*.npz` (los pesos van en el GitHub Release) y el entorno `.venv-mvp/` que crean los scripts de arranque del MVP.
+- `.gitattributes`: se fijaron los finales de linea de los scripts de arranque (`*.sh` con LF y `*.bat` con CRLF), para que funcionen al clonar en cualquier sistema. Las reglas de Git LFS no cambiaron.
 
 ## Instalacion
 
