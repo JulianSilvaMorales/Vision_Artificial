@@ -28,22 +28,101 @@ Lumbar Spine MRI Dataset: https://data.mendeley.com/datasets/k57fr854j2/2
 ## Integrantes
 
 | Nombre | Rol / Aporte |
+|---|---|
 | Jhon Jairo Perdomo Perdomo | Líder del Proyecto, Investigación, Dataset, Etiquetado, Documentación |
 | Julián Andrés Silva Morales | Entrenamiento y evaluacion (YOLOv8-cls, ResNet-50), Modelos SVM y Random Forest |
 | Juan Manuel Tengonó Lasso | Aplicacion web (backend + frontend) |
 
-## Resultados preliminares
+## Resultados
 
-Un solo seed (42); se actualizara cuando esten los cuatro modelos.
+Los cuatro modelos se entrenaron con el mismo dataset, la misma division por paciente y la misma semilla (42), en una RTX 3060 Ti (Ubuntu 24.04 en WSL2, PyTorch 2.15). Las epocas e hiperparametros se eligieron con **validacion** (F1 macro); el **test se evaluo una sola vez**, al final.
 
-| Modelo | Estado |
+Test de originales (768 imagenes en proporcion natural: 42 Degeneracion, 164 Normal, 562 Protrusion):
+
+| Modelo | Exactitud | F1 macro | ROC-AUC | Recall Degeneracion / Normal / Protrusion |
+|---|---|---|---|---|
+| 1. YOLOv8s-cls (ajuste fino) | 87,8 % | 0,750 | 0,931 | 0,50 / 0,76 / 0,94 |
+| **2. ResNet-50 (ajuste fino)**, mejor por validacion | **88,9 %** | **0,769** | 0,919 | 0,50 / 0,81 / 0,94 |
+| 3. SVM (RBF) sobre embeddings de la ResNet-50 ajustada | 88,4 % | 0,748 | 0,899 | 0,43 / 0,77 / 0,95 |
+| 4. Random Forest sobre los mismos embeddings | 88,4 % | 0,746 | 0,942 | 0,40 / 0,77 / 0,95 |
+
+En el test completo (5.253 imagenes, balanceado con copias aumentadas) la exactitud es de 74–78 % y el F1 macro de 0,73–0,77. Como linea base del curso tambien se entrenaron regresion logistica y KNN sobre los mismos embeddings (87,8 % y 88,8 %), y como comparacion, SVM y Random Forest sobre embeddings de ImageNet sin ajustar (77,6 % y 75,3 %).
+
+![Matrices de confusion de los 4 modelos en test de originales](docs/resultados/comparacion/matrices_confusion_test_orig.png)
+
+Lectura honesta de las cifras:
+- **Ningun modelo alcanza el 89 %** de exactitud. La ResNet-50 queda en 88,9 % (683 de 768), y el margen de error sobre 768 imagenes es de ±2,2 puntos, asi que las diferencias entre los 4 modelos no son significativas. Las variantes probadas en validacion (semillas, regularizacion, ensambles) se estancan en 86–87,5 %: el limite parece estar en los datos, no en el modelo.
+- **La exactitud sobre originales esta inflada** porque el 73 % es Protrusion. Por eso se reportan tambien F1 macro y recall por clase. **Degeneracion es la clase debil**: se detecta la mitad de los 42 casos.
+- **Sobreajuste:** las redes logran su mejor resultado en la epoca 2 y llegan a ~97–99 % en train.
+- El SVM y el Random Forest usan las caracteristicas de la ResNet-50 ajustada (modelo 2). Con embeddings de ImageNet sin ajustar rinden mucho menos, asi que dependen del modelo 2; esto se declara en el informe.
+
+Detalle por modelo (metricas por conjunto, por clase y por nivel, matrices, curvas, configuracion y puntajes por imagen): [`docs/resultados/`](docs/resultados/README.md). Registro de los experimentos de ajuste: [`docs/resultados/experimentos_validacion.md`](docs/resultados/experimentos_validacion.md). Ecuaciones y graficos de los 4 modelos: [`docs/modelo_matematico/`](docs/modelo_matematico/README.md).
+
+## Entrenamiento de los modelos: codigo, funcionamiento y resultados
+
+### Flujo
+
+```
+dataset 35k (train / val / test por paciente)
+   │
+   ├─ 01_yolov8s_cls.py ──────────────► modelo 1: YOLOv8s-cls ajustada
+   ├─ 02_resnet50.py ─────────────────► modelo 2: ResNet-50 ajustada
+   │                                        │
+   │                 03_embeddings.py ◄─────┘  (2048 caracteristicas por imagen, sin la capa final)
+   │                        │
+   │                 04_svm_random_forest.py ─► modelos 3 y 4: SVM y Random Forest (+ logistica y KNN)
+   │
+   └─ 05_comparar_modelos.py ─► tabla y figuras comparativas · 06_figuras_modelo_matematico.py ─► figuras del modelo matematico
+```
+
+Reglas que cumplen todos los scripts:
+- Al cargar el dataset verifican que ningun paciente este en dos particiones, que cada copia aumentada este en la particion de su original y que los archivos coincidan con `manifest_35k.csv`. Si algo falla, se detienen.
+- Los parametros se aprenden con train. La epoca y los hiperparametros se eligen con validacion (F1 macro). El test se evalua una sola vez, al final.
+- El escalador y el PCA se ajustan solo con train (sin fuga de datos).
+- Todo usa la semilla 42.
+
+### Que hace cada script (`scripts/entrenamiento/`)
+
+| Script | Como funciona | Que produce |
+|---|---|---|
+| `01_yolov8s_cls.py` | Ajuste fino de YOLOv8s-cls (preentrenada en ImageNet) con ultralytics. Configuracion: AdamW (lr 5e-4), 4 capas congeladas, dropout 0,3, coseno, hasta 15 epocas con paciencia 4. Ultralytics guarda la epoca con mejor exactitud en validacion. Despues predice las 35.007 imagenes | `docs/resultados/modelo1_yolov8s_cls/` y `models/yolov8s_cls.pt`. Mejor epoca: 2 de 6 |
+| `02_resnet50.py` | Ajuste fino de ResNet-50 (torchvision, ImageNet). Congela `conv1`, `bn1` y `layer1`, y cambia la capa final por Dropout(0,3) + Linear(2048→3). AdamW (lr 1e-4, weight decay 0,01), coseno, suavizado de etiquetas 0,1, aumento en linea suave y precision mixta. Guarda la epoca con mejor F1 macro en validacion, con parada temprana; `--reanudar` continua un entrenamiento cortado | `docs/resultados/modelo2_resnet50/` y `models/resnet50.pt`. Mejor epoca: 2 de 6 |
+| `03_embeddings.py` | Pasa las 35.007 imagenes por la ResNet-50 sin su capa final y guarda 2.048 valores por imagen. `--extractor ajustada` (oficial) usa la del modelo 2; `--extractor imagenet` la de ImageNet sin ajustar (comparacion) | `~/deepspine_runs/embeddings_resnet50_*.npz` (~290 MB, fuera del repo). Tarda ~35 s |
+| `04_svm_random_forest.py` | StandardScaler y PCA a 256 componentes, ajustados con train. Luego prueba en validacion SVM RBF (C = 0,1 / 0,5 / 2 / 8), Random Forest de 300 arboles (profundidad 10 / 20 / sin limite), regresion logistica (C = 0,01 / 0,1 / 1) y KNN (K = 5 / 15 / 31), y se queda con el mejor de cada uno | `docs/resultados/modelo3_svm/`, `modelo4_random_forest/`, `extra_*/` (o `ablacion_imagenet_*/`), y `models/svm.joblib` y `models/random_forest.joblib`, que guardan dentro el escalador y el PCA. Elegidos: SVM C = 0,1; Random Forest profundidad 20 |
+| `05_comparar_modelos.py` | Lee los puntajes de cada modelo, calcula las mismas metricas para todos, agrega un ensamble de los 4 como extra y elige el mejor por F1 macro en validacion | `docs/resultados/comparacion/`: tablas por metrica, recall por clase, matrices de confusion lado a lado, ROC y barras. Mejor por validacion: ResNet-50 |
+| `06_figuras_modelo_matematico.py` | Genera los graficos del modelo matematico a partir de los modelos entrenados: softmax, funcion de costo, tasa de aprendizaje, curvas, PCA, SVM, Random Forest y busqueda de hiperparametros | `docs/modelo_matematico/figuras/` y `valores.json` (cada cifra citada en el documento) |
+
+### Codigo comun (`src/`)
+
+| Archivo | Para que sirve |
 |---|---|
-| 1. YOLOv8s-cls | Entrenado. F1 macro 0.755 en test de originales (768 imagenes) y 0.780 en test completo (5.253). |
-| 2. ResNet-50 (ajuste fino) | En curso |
-| 3. SVM (RBF) sobre embeddings | En curso |
-| 4. Random Forest sobre embeddings | En curso |
+| `src/utils/config.py` | Rutas (dataset, corridas, resultados, pesos), semilla, orden de las clases, normalizacion de ImageNet y `PIN_MEMORY = False` (en WSL2 la memoria fijada provoca errores de CUDA) |
+| `src/data/dataset.py` | Construye el indice de las 35.007 imagenes (particion, clase, paciente, nivel, original o copia), verifica que no haya fuga y define los conjuntos de evaluacion |
+| `src/models/resnet.py` | ResNet-50: construccion, congelado de capas, cargadores de imagenes con y sin aumento, prediccion, carga del modelo 2 y extractores de embeddings |
+| `src/training/evaluacion.py` | Cierre comun de cada modelo: metricas, reportes, matrices, curvas y `metadata.json` con la configuracion y las versiones |
+| `src/utils/metricas.py`, `src/utils/graficas.py` | Metricas iguales para todos los modelos (exactitud, precision, recall, F1, exactitud balanceada, ROC-AUC, log loss) y graficas |
+| `src/inference/predictor.py` | `Predictor` para la aplicacion web: `predecir(imagen, modelo)` y `predecir_todos(imagen)`. Acepta ruta, bytes, PIL o numpy. Devuelve clase, confianza y puntaje por clase, y oculta embeddings, escalador y PCA. Se verifico contra la evaluacion en 20 imagenes de test por modelo |
 
-El detalle, las matrices de confusion y la comparativa se agregaran a `docs/` cuando esten los cuatro modelos.
+### Donde quedo lo de los modelos entrenados
+
+| Que | Donde | En el repo |
+|---|---|---|
+| Metricas, reportes por clase y por nivel, matrices de confusion, curvas, configuracion y puntajes de las 35.007 imagenes de cada modelo | `docs/resultados/<modelo>/` | Si |
+| Comparacion de los 4 modelos (tablas y figuras) | `docs/resultados/comparacion/` | Si |
+| Registro de los experimentos de ajuste en validacion | `docs/resultados/experimentos_validacion.md` | Si |
+| Modelo matematico (ecuaciones, graficos y valores) | `docs/modelo_matematico/` | Si |
+| Codigo de entrenamiento, evaluacion e inferencia | `scripts/entrenamiento/` y `src/` | Si |
+| Descripcion y hashes SHA-256 de los pesos | `models/README.md` | Si |
+| **Pesos de los 4 modelos** (`yolov8s_cls.pt`, `resnet50.pt`, `svm.joblib`, `random_forest.joblib`, ~121 MB en total) | **GitHub Release** del repositorio; se descargan en `models/` | No: van en la Release para no gastar la cuota de Git LFS |
+| Embeddings, checkpoints por epoca y experimentos descartados | `~/deepspine_runs/` de quien entrena | No: se regeneran con los scripts |
+| Imagenes del dataset de 35k | Enlace de Drive / `scripts/build_dataset.py` | No |
+
+### Proceso seguido
+1. **Entorno:** el entrenamiento se hizo en Ubuntu 24.04 (WSL2) con la GPU local, en lugar de Colab, para evitar desconexiones. Se uso PyTorch porque YOLOv8 (ultralytics) solo existe para PyTorch.
+2. **Problema resuelto:** en WSL2 los DataLoader fallaban con `CUDA error: out of memory` al reservar memoria fijada. Se desactivo `pin_memory`.
+3. **Primera version:** YOLO y ResNet-50 quedaron en 87,8 % de exactitud sobre los originales de test. SVM y Random Forest sobre embeddings de ImageNet sin ajustar quedaron en 80 % y 75 %.
+4. **Ajuste con validacion** para intentar llegar al 89 %: varias semillas, regularizacion de la ResNet (suavizado de etiquetas y aumento en linea), ensambles y correccion por la proporcion de clases. Se adopto la ResNet regularizada (mejor F1 en validacion). SVM y Random Forest pasaron a usar las caracteristicas de esa ResNet; su F1 en validacion subio de 0,65 a 0,80 (SVM) y de 0,60 a 0,79 (Random Forest). La correccion por proporcion se descarto porque hundia la deteccion de Degeneracion.
+5. **Evaluacion final:** los 4 modelos se evaluaron una sola vez en test, con las metricas de la tabla de [Resultados](#resultados).
 
 ## Arquitectura del proyecto
 
@@ -63,7 +142,7 @@ Peticion HTTP -> api/routes/ -> schemas/ (validacion) -> services/ (logica) -> s
 
 Regla clave: las rutas (`api/routes/`) nunca llaman directo al codigo de inferencia (`src/inference/`). Siempre pasan por `services/`, que orquesta la logica. Esto separa "como entra la peticion" de "que hace el proyecto", y permite agregar mas adelante una capa `repositories/` (para base de datos) sin reorganizar nada, si el proyecto llega a necesitarla.
 
-Nota: el backend y el frontend los desarrolla otro integrante del equipo; las tecnologias concretas se documentaran aqui cuando esten definidas. La app debe usar los cuatro modelos entrenados; los modelos SVM y Random Forest requieren primero calcular los embeddings de una ResNet-50 congelada (ImageNet) y aplicar el escalador y el PCA guardados junto al modelo.
+Nota: el backend y el frontend los desarrolla otro integrante del equipo; las tecnologias concretas se documentaran aqui cuando esten definidas. La app debe usar los cuatro modelos entrenados; los modelos SVM y Random Forest requieren primero calcular los embeddings de la ResNet-50 ajustada (modelo 2) y aplicar el escalador y el PCA guardados junto al modelo. Todo eso lo hace `src/inference/predictor.py`, que la capa `services/` puede llamar directamente.
 
 ### 3. Frontend: organizacion por componentes (React)
 
@@ -96,9 +175,10 @@ Vision_Artificial/
 │   ├── recorte_roi/              # Recorte del ROI de cada disco
 │   ├── etiquetado/                # Semilla, split por paciente y registro de etiquetas
 │   ├── guias_visuales/             # Figuras de la guia de anotacion
+│   ├── entrenamiento/              # Entrenamiento, evaluacion y comparacion de los 4 modelos
 │   └── build_dataset.py            # Dataset final de 35.007 imagenes
 │
-├── models/                     # Pesos entrenados (YOLOv8-cls, ResNet-50, SVM, Random Forest)
+├── models/                     # Pesos del pipeline de datos; los 4 modelos finales se descargan del GitHub Release
 │
 ├── notebooks/                  # Notebooks (Colab): preetiquetado, entrenamiento de los 4 modelos y comparacion
 │
@@ -120,7 +200,7 @@ Vision_Artificial/
 │           └── utils/                   # Helpers propios del frontend
 │
 ├── tests/                       # Pruebas unitarias del codigo en src/
-├── docs/                        # Guias, informes, modelo matematico, seleccion de modelos, referencias
+├── docs/                        # Guias, resultados (docs/resultados/), modelo matematico (docs/modelo_matematico/) y referencias
 └── assets/                      # Imagenes/recursos usados en el README
 ```
 
@@ -135,7 +215,8 @@ Contenido actual y previsto de `scripts/` y `notebooks/`:
 | `scripts/build_dataset.py` | En el repo | Construye el dataset de 35.007 imagenes: split por paciente 70/15/15, balanceo y aumento dentro de cada particion, verificacion |
 | `notebooks/00_entrenamiento_detector_discos.ipynb` | En el repo | Entrenamiento del detector de discos (YOLO) usado para recortar los ROI |
 | `notebooks/01_preetiquetado_semilla_v2.ipynb` | En el repo | Modelo semilla (YOLOv8-cls) para preetiquetar los ROI; la revision humana posterior produce `etiquetas_revisadas.csv` |
-| `notebooks/02` a `05` | Pendiente | Entrenamiento de los cuatro modelos (YOLOv8s-cls, ResNet-50, SVM y Random Forest sobre embeddings) y su comparacion; se agregan cuando terminen los entrenamientos |
+| `scripts/entrenamiento/` | En el repo | Entrenamiento y evaluacion de los cuatro modelos y su comparacion (`01_yolov8s_cls.py` a `05_comparar_modelos.py`); se ejecutan desde la terminal en Ubuntu (WSL2) en lugar de cuadernos |
+| `src/` | En el repo | Codigo comun: indice del dataset y verificacion de fuga (`data/`), ResNet-50 (`models/`), evaluacion (`training/`), metricas y graficas (`utils/`) y prediccion para la app (`inference/predictor.py`) |
 
 Los scripts de `scripts/` se conservan tal como se usaron durante el trabajo; las rutas de entrada y salida se configuran dentro de cada uno (ver `if __name__ == "__main__"` o sus argumentos).
 
@@ -183,6 +264,29 @@ python scripts/build_dataset.py --continuar           # reanuda si se interrumpi
 ```
 
 La ruta base se define con la variable de entorno `DEEPSPINE_BASE` (por defecto, la carpeta actual). El script espera en esa carpeta `t2_disc_roi_patches_v2_ext/` (ROI) y `DeepSpine_Dataset_Etiquetado/etiquetas_revisadas.csv`, y escribe `DeepSpine_Dataset_35k/`.
+
+**Entrenar los 4 modelos** (Linux o WSL2 con GPU NVIDIA; el dataset descomprimido en `~/deepspine_data/` con `train/`, `val/` y `test/`, o en la ruta de la variable `DEEPSPINE_DATA`):
+
+```
+python scripts/entrenamiento/01_yolov8s_cls.py                          # modelo 1
+python scripts/entrenamiento/02_resnet50.py                             # modelo 2
+python scripts/entrenamiento/03_embeddings.py --extractor ajustada      # embeddings de la ResNet-50 ajustada
+python scripts/entrenamiento/04_svm_random_forest.py --extractor ajustada   # modelos 3 y 4 (+ logistica y KNN)
+python scripts/entrenamiento/03_embeddings.py --extractor imagenet      # opcional: comparacion con ImageNet
+python scripts/entrenamiento/04_svm_random_forest.py --extractor imagenet
+python scripts/entrenamiento/05_comparar_modelos.py                     # tabla y figuras comparativas
+```
+
+Cada script deja sus resultados en `docs/resultados/<modelo>/` y los pesos en `models/`; los checkpoints y embeddings quedan fuera del repo, en `~/deepspine_runs/` (`DEEPSPINE_RUNS`). Tiempos medidos en una RTX 3060 Ti: YOLO ~2 min, ResNet-50 ~5 min, embeddings ~35 s, modelos clasicos ~3 min (ImageNet ~10 min). En WSL2 el `pin_memory` de los DataLoader esta desactivado (`src/utils/config.py`) porque provoca errores de memoria.
+
+**Usar los modelos entrenados** (descargar los 4 archivos del GitHub Release en `models/`):
+
+```python
+from src.inference.predictor import Predictor
+pred = Predictor()
+pred.predecir("roi.png", modelo="resnet50")   # "yolov8s_cls", "resnet50", "svm" o "random_forest"
+pred.predecir_todos("roi.png")                # los 4 modelos sobre la misma imagen
+```
 
 **Notebooks:** los cuadernos 00 y 01 se ejecutan en Google Colab con GPU. Usan Roboflow: la clave se guarda como secreto de Colab con el nombre `ROBOFLOW_API_KEY`; no se escribe en el cuaderno. Las variables a ajustar (rutas, workspace y proyecto) estan en las primeras celdas.
 

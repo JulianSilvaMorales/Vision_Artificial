@@ -1,0 +1,26 @@
+{
+  "mejor_por_validacion": "2 · ResNet-50 ajustada",
+  "criterio": "F1 macro en val completo",
+  "modelos": [
+    "1 · YOLOv8s-cls",
+    "2 · ResNet-50 ajustada",
+    "3 · SVM (RBF) sobre embeddings",
+    "4 · Random Forest sobre embeddings"
+  ],
+  "extras": [
+    "extra · Regresion logistica",
+    "extra · KNN",
+    "3 · SVM (RBF) sobre embeddings (ImageNet congelada)",
+    "4 · Random Forest sobre embeddings (ImageNet congelada)",
+    "extra · Regresion logistica (ImageNet congelada)",
+    "extra · KNN (ImageNet congelada)",
+    "extra · Ensamble de los 4 (promedio)"
+  ],
+  "advertencias": [
+    "seleccion por validacion; test solo informado",
+    "se reportan originales y test completo",
+    "Degeneracion: 42 originales en test",
+    "etiquetas de estudiantes sin radiologo",
+    "posible atajo por nivel"
+  ]
+}

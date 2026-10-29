@@ -1,0 +1,38 @@
+{
+  "modelo": "2 · ResNet-50 ajustada",
+  "fecha": "2026-10-29T11:22:51",
+  "semilla": 42,
+  "clases": [
+    "Degeneracion_Discal",
+    "Normal",
+    "Protrusion"
+  ],
+  "config": {
+    "base": "torchvision resnet50 IMAGENET1K_V2",
+    "congeladas": "conv1, bn1, layer1",
+    "epocas": 10,
+    "paciencia": 4,
+    "ls": 0.1,
+    "sin_aumento": false,
+    "lr": 0.0001,
+    "wd": 0.01,
+    "dropout": 0.3,
+    "batch": 64,
+    "workers": 8,
+    "reanudar": false,
+    "optimizador": "AdamW",
+    "scheduler": "CosineAnnealingLR",
+    "amp": true,
+    "mejor_epoca": 2,
+    "criterio_best": "F1 macro en val completo"
+  },
+  "versiones": {
+    "python": "3.12.3",
+    "torch": "2.15.0+cu132",
+    "torchvision": "0.29.2+cu132",
+    "ultralytics": "8.4.192",
+    "sklearn": "1.9.1",
+    "numpy": "2.5.4"
+  },
+  "seleccion": "hiperparametros y epoca elegidos con validacion; el test se evalua una sola vez al final"
+}

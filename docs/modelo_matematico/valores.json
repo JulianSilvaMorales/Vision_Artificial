@@ -1,0 +1,121 @@
+{
+  "ejemplo_softmax": {
+    "logits": [
+      2.0,
+      0.5,
+      -1.0
+    ],
+    "probabilidades": [
+      0.7856,
+      0.1753,
+      0.0391
+    ]
+  },
+  "suavizado": {
+    "epsilon": 0.1,
+    "objetivo_clase_real": 0.9333,
+    "objetivo_otras": 0.0333,
+    "perdida_minima": 0.2911
+  },
+  "pca": {
+    "ajustada": {
+      "k=2": 0.3841,
+      "k=10": 0.5111,
+      "k=50": 0.6497,
+      "k=256": 0.8022,
+      "k=512": 0.8721
+    },
+    "imagenet": {
+      "k=2": 0.0796,
+      "k=10": 0.1966,
+      "k=50": 0.3636,
+      "k=256": 0.5865,
+      "k=512": 0.7107
+    }
+  },
+  "svm": {
+    "C": 0.1,
+    "gamma": 0.0006097385542645598,
+    "distancia_mediana": 59.41,
+    "n_vectores_soporte": 1684,
+    "vectores_soporte_por_clase": {
+      "Degeneracion_Discal": 320,
+      "Normal": 660,
+      "Protrusion": 704
+    },
+    "n_train": 24501,
+    "pca_varianza_256": 0.8004
+  },
+  "random_forest": {
+    "n_arboles": 300,
+    "max_depth": 20,
+    "max_features": "sqrt",
+    "variables_por_division": 16,
+    "profundidad_media": 20.0,
+    "hojas_media": 779.1,
+    "importancia_10_primeras_componentes": 0.6976
+  },
+  "metricas_resnet_test_orig": {
+    "matriz": [
+      [
+        21,
+        6,
+        15
+      ],
+      [
+        5,
+        133,
+        26
+      ],
+      [
+        6,
+        27,
+        529
+      ]
+    ],
+    "n": 768,
+    "aciertos": 683,
+    "exactitud": 0.8893,
+    "ic95_wilson": [
+      0.8652,
+      0.9096
+    ],
+    "por_clase": {
+      "Degeneracion_Discal": {
+        "TP": 21,
+        "FP": 11,
+        "FN": 21,
+        "TN": 715,
+        "precision": 0.6562,
+        "recall": 0.5,
+        "f1": 0.5676
+      },
+      "Normal": {
+        "TP": 133,
+        "FP": 33,
+        "FN": 31,
+        "TN": 571,
+        "precision": 0.8012,
+        "recall": 0.811,
+        "f1": 0.8061
+      },
+      "Protrusion": {
+        "TP": 529,
+        "FP": 41,
+        "FN": 33,
+        "TN": 165,
+        "precision": 0.9281,
+        "recall": 0.9413,
+        "f1": 0.9346
+      }
+    },
+    "f1_macro": 0.7694,
+    "exactitud_siempre_protrusion": 0.7318
+  },
+  "parametros": {
+    "resnet50_total": 23514179,
+    "resnet50_congelados": 225344,
+    "resnet50_capa_final": 6147,
+    "yolov8s_cls_total": 5084579
+  }
+}

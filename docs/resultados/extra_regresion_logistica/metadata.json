@@ -1,0 +1,58 @@
+{
+  "modelo": "extra · Regresion logistica",
+  "fecha": "2026-10-29T11:46:47",
+  "semilla": 42,
+  "clases": [
+    "Degeneracion_Discal",
+    "Normal",
+    "Protrusion"
+  ],
+  "config": {
+    "entrada": "embeddings (2048) de ResNet-50 del modelo 2 (models/resnet50.pt), fc=Identity -> StandardScaler -> PCA",
+    "pca_componentes": 256,
+    "pca_varianza_explicada": 0.8004,
+    "clasificador": "LogisticRegression multinomial (modelo base del curso)",
+    "rejilla": [
+      {
+        "C": 0.01
+      },
+      {
+        "C": 0.1
+      },
+      {
+        "C": 1
+      }
+    ],
+    "busqueda_val": [
+      {
+        "C": 0.01,
+        "f1_macro_val": 0.7866,
+        "seg": 11
+      },
+      {
+        "C": 0.1,
+        "f1_macro_val": 0.7804,
+        "seg": 20
+      },
+      {
+        "C": 1,
+        "f1_macro_val": 0.7735,
+        "seg": 15
+      }
+    ],
+    "elegido": {
+      "C": 0.01
+    },
+    "criterio": "F1 macro en val completo",
+    "salida": "probabilidades"
+  },
+  "versiones": {
+    "python": "3.12.3",
+    "torch": "2.15.0+cu132",
+    "torchvision": "0.29.2+cu132",
+    "ultralytics": "8.4.192",
+    "sklearn": "1.9.1",
+    "numpy": "2.5.4"
+  },
+  "seleccion": "hiperparametros y epoca elegidos con validacion; el test se evalua una sola vez al final"
+}

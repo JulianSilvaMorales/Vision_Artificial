@@ -1,0 +1,66 @@
+{
+  "modelo": "3 · SVM (RBF) sobre embeddings (ImageNet congelada)",
+  "fecha": "2026-10-29T11:44:06",
+  "semilla": 42,
+  "clases": [
+    "Degeneracion_Discal",
+    "Normal",
+    "Protrusion"
+  ],
+  "config": {
+    "entrada": "embeddings (2048) de torchvision resnet50 IMAGENET1K_V2 sin ajustar, fc=Identity -> StandardScaler -> PCA",
+    "pca_componentes": 256,
+    "pca_varianza_explicada": 0.5827,
+    "clasificador": "SVC kernel RBF, gamma='scale', uno contra el resto",
+    "rejilla": [
+      {
+        "C": 0.1
+      },
+      {
+        "C": 0.5
+      },
+      {
+        "C": 2
+      },
+      {
+        "C": 8
+      }
+    ],
+    "busqueda_val": [
+      {
+        "C": 0.1,
+        "f1_macro_val": 0.6512,
+        "seg": 70
+      },
+      {
+        "C": 0.5,
+        "f1_macro_val": 0.6361,
+        "seg": 55
+      },
+      {
+        "C": 2,
+        "f1_macro_val": 0.5901,
+        "seg": 117
+      },
+      {
+        "C": 8,
+        "f1_macro_val": 0.5671,
+        "seg": 157
+      }
+    ],
+    "elegido": {
+      "C": 0.1
+    },
+    "criterio": "F1 macro en val completo",
+    "salida": "decision_function (no son probabilidades)"
+  },
+  "versiones": {
+    "python": "3.12.3",
+    "torch": "2.15.0+cu132",
+    "torchvision": "0.29.2+cu132",
+    "ultralytics": "8.4.192",
+    "sklearn": "1.9.1",
+    "numpy": "2.5.4"
+  },
+  "seleccion": "hiperparametros y epoca elegidos con validacion; el test se evalua una sola vez al final"
+}
