@@ -1,11 +1,17 @@
-# Dependencias del pipeline de datos (scripts/) y de los cuadernos 00 y 01.
-# Versiones sin fijar: se pueden fijar con `pip freeze` una vez definido el entorno del equipo.
+# Dependencias del pipeline de datos (scripts/), del entrenamiento (scripts/entrenamiento/) y de la inferencia (src/inference/).
+# Versiones usadas en el entrenamiento de los 4 modelos (Ubuntu 24.04 en WSL2, Python 3.12, CUDA):
+#   torch 2.15.0, torchvision 0.29.2, ultralytics 8.4.192, scikit-learn 1.9.1, numpy 2.5.4.
+# scikit-learn debe ser la misma version para cargar models/svm.joblib y models/random_forest.joblib.
 numpy
 pandas
 opencv-python-headless
 pydicom
 matplotlib
-scikit-learn
+scikit-learn==1.9.1
 statsmodels
-ultralytics   # trae PyTorch y torchvision
+joblib
+pillow
+torch
+torchvision
+ultralytics   # YOLOv8s-cls
 roboflow      # solo los cuadernos 00 y 01 (en Colab se instala con !pip)
