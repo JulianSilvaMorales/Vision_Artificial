@@ -1,0 +1,58 @@
+{
+  "modelo": "extra · KNN",
+  "fecha": "2026-10-29T10:37:43",
+  "semilla": 42,
+  "clases": [
+    "Degeneracion_Discal",
+    "Normal",
+    "Protrusion"
+  ],
+  "config": {
+    "entrada": "embeddings ResNet-50 ImageNet congelada (2048) -> StandardScaler -> PCA",
+    "pca_componentes": 256,
+    "pca_varianza_explicada": 0.5827,
+    "clasificador": "KNeighborsClassifier, distancia euclidea",
+    "rejilla": [
+      {
+        "n_neighbors": 5
+      },
+      {
+        "n_neighbors": 15
+      },
+      {
+        "n_neighbors": 31
+      }
+    ],
+    "busqueda_val": [
+      {
+        "n_neighbors": 5,
+        "f1_macro_val": 0.5241,
+        "seg": 0
+      },
+      {
+        "n_neighbors": 15,
+        "f1_macro_val": 0.5317,
+        "seg": 0
+      },
+      {
+        "n_neighbors": 31,
+        "f1_macro_val": 0.5284,
+        "seg": 1
+      }
+    ],
+    "elegido": {
+      "n_neighbors": 15
+    },
+    "criterio": "F1 macro en val completo",
+    "salida": "probabilidades"
+  },
+  "versiones": {
+    "python": "3.12.3",
+    "torch": "2.15.0+cu132",
+    "torchvision": "0.29.2+cu132",
+    "ultralytics": "8.4.192",
+    "sklearn": "1.9.1",
+    "numpy": "2.5.4"
+  },
+  "seleccion": "hiperparametros y epoca elegidos con validacion; el test se evalua una sola vez al final"
+}
