@@ -81,7 +81,7 @@ $$q_k = (1-\varepsilon)\thinspace \mathbf{y}_k + \frac{\varepsilon}{K} \quad\Rig
 
   Así la red no puede volverse arbitrariamente segura, lo que reduce el sobreajuste. El costo mínimo posible ya no es 0 sino la entropía de $q$, $H(q) = 0{,}291$. Ese es el piso al que se acerca la pérdida de train (0,305 en la época 6, figura 2).
 
-**¿Por qué no MSE?** El MSE de la semana 9 es la función de costo natural cuando $y$ es un número real (regresión). Para probabilidades de clase, la entropía cruzada da gradientes más grandes cuando el error es grande. Además, es la función que se obtiene al maximizar la verosimilitud del modelo.
+**¿Por qué no MSE para entrenar?** El MSE de la semana 9 es la función de costo natural cuando $y$ es un número real (regresión). Para probabilidades de clase, la entropía cruzada da gradientes más grandes cuando el error es grande. Además, es la función que se obtiene al maximizar la verosimilitud del modelo. El MSE sí se usa para **evaluar**: se reporta como puntaje de Brier (sección 4.2) en el registro de desempeño (sección 4.4).
 
 ![Función de costo](figuras/02_funcion_costo.png)
 
@@ -216,7 +216,11 @@ Con características de ImageNet sin ajustar, el SVM baja de 88,4 % a 77,6 % y e
 - Se reporta el test de **originales** (768 imágenes en proporción natural: 42 Degeneración, 164 Normal, 562 Protrusión) y el **test completo** (5.253, balanceado con copias).
 
 ### 4.2 Matriz de confusión y métricas
-Para cada clase $k$, tratada como "positiva" frente a las demás: TP = predijo $k$ y era $k$; FP = predijo $k$ y no era $k$; FN = era $k$ y predijo otra; TN = el resto.
+En clase se vieron las fórmulas para **2 clases** (positiva y negativa):
+
+$$\text{Accuracy} = \frac{TP + TN}{TP + TN + FP + FN}, \qquad \text{Precision} = \frac{TP}{TP + FP}, \qquad \text{Recall} = \frac{TP}{TP + FN}, \qquad F1 = 2\cdot\frac{\text{Precision}\cdot\text{Recall}}{\text{Precision} + \text{Recall}}$$
+
+Con **3 clases** se aplican las mismas fórmulas tres veces. Cada clase $k$ se trata como la "positiva" y las otras dos como la "negativa" (uno contra el resto): TP = predijo $k$ y era $k$; FP = predijo $k$ y no era $k$; FN = era $k$ y predijo otra; TN = el resto. Luego se promedian las tres (promedio *macro*). La exactitud no necesita promedio: es el total de aciertos (la diagonal de la matriz) sobre el total de imágenes.
 
 $$\text{Exactitud} = \frac{\sum_k \text{TP}_k}{N}, \qquad \text{Precisión}_k = \frac{\text{TP}_k}{\text{TP}_k + \text{FP}_k}, \qquad \text{Recall}_k = \frac{\text{TP}_k}{\text{TP}_k + \text{FN}_k}$$
 
@@ -251,6 +255,16 @@ Las diferencias entre los 4 modelos (87,8 % a 88,9 %) están dentro de ese marge
 
 **Log loss.** Es la entropía cruzada de la sección 2.3, evaluada con las probabilidades sobre el conjunto de prueba.
 
+**MSE (puntaje de Brier).** Es el MSE de la semana 9 aplicado a la clasificación. El "valor real" de cada imagen es su etiqueta en one-hot (por ejemplo, Protrusión = $(0, 0, 1)$) y la "predicción" son las 3 probabilidades del modelo. Se suman los errores al cuadrado de las 3 clases y se promedia sobre las $N$ imágenes:
+
+$$\text{MSE} = \frac{1}{N}\sum_{i=1}^{N}\sum_{k=1}^{3}\left(p_{ik} - y_{ik}\right)^2, \qquad \text{RMSE} = \sqrt{\text{MSE}}$$
+
+Vale 0 si el modelo da probabilidad 1 a la clase correcta y como máximo 2. Igual que el MSE de clase, castiga más los errores grandes. Ejemplo con una imagen real de Protrusión:
+- Si el modelo da $p = (0{,}1;\ 0{,}2;\ 0{,}7)$: $0{,}1^2 + 0{,}2^2 + 0{,}3^2 = 0{,}14$ (acierta, con algo de duda).
+- Si da $p = (0{,}9;\ 0{,}05;\ 0{,}05)$: $0{,}9^2 + 0{,}05^2 + 0{,}95^2 = 1{,}715$ (falla con mucha seguridad).
+
+A diferencia de la exactitud, el MSE también mide si la **confianza** del modelo es la adecuada. No aplica al SVM, porque sus puntajes no son probabilidades.
+
 ### 4.3 Resultados (test de originales)
 
 | Modelo | Exactitud | F1 macro | ROC-AUC macro | Recall D / N / P |
@@ -263,6 +277,39 @@ Las diferencias entre los 4 modelos (87,8 % a 88,9 %) están dentro de ese marge
 ![Matrices de confusión de los 4 modelos](../resultados/comparacion/matrices_confusion_test_orig.png)
 
 ![Curvas ROC](../resultados/comparacion/roc_test_orig.png)
+
+### 4.4 Registro de desempeño (formato de la clase)
+
+Es la tabla "Registro de desempeño" de la semana 9, con columnas Train y Test.
+- **Train:** las 3.577 imágenes originales de entrenamiento.
+- **Test:** las 768 originales de test.
+- **Test completo:** las 5.253 imágenes de test con copias aumentadas, como referencia adicional.
+
+Precision, recall y F1 son promedios *macro* de las 3 clases. **R² no aplica**: es una métrica de regresión y este problema es de clasificación (como advierte la diapositiva, no todas las métricas aplican a todos los modelos).
+
+| Modelo | Métrica | Train | Test | Test completo |
+|---|---|---|---|---|
+| **1. YOLOv8s-cls** | MSE / RMSE (Brier) | 0,024 / 0,154 | 0,196 / 0,442 | 0,403 / 0,635 |
+| | Accuracy | 0,984 | 0,878 | 0,759 |
+| | Precision / Recall | 0,959 / 0,989 | 0,771 / 0,732 | 0,779 / 0,759 |
+| | F1 / ROC-AUC | 0,973 / 0,999 | 0,750 / 0,931 | 0,752 / 0,923 |
+| **2. ResNet-50** | MSE / RMSE (Brier) | 0,047 / 0,217 | 0,173 / 0,416 | 0,349 / 0,591 |
+| | Accuracy | 0,971 | **0,889** | 0,775 |
+| | Precision / Recall | 0,948 / 0,981 | 0,795 / 0,751 | 0,799 / 0,775 |
+| | F1 / ROC-AUC | 0,964 / 0,998 | 0,769 / 0,919 | 0,768 / 0,915 |
+| **3. SVM (RBF)** | MSE / RMSE (Brier) | no aplica | no aplica | no aplica |
+| | Accuracy | 0,979 | 0,884 | 0,754 |
+| | Precision / Recall | 0,964 / 0,984 | 0,797 / 0,718 | 0,789 / 0,754 |
+| | F1 / ROC-AUC | 0,974 / 0,998 | 0,748 / 0,899 | 0,746 / 0,905 |
+| **4. Random Forest** | MSE / RMSE (Brier) | 0,010 / 0,098 | 0,174 / 0,416 | 0,370 / 0,608 |
+| | Accuracy | 0,998 | 0,884 | 0,743 |
+| | Precision / Recall | 0,994 / 0,999 | 0,810 / 0,710 | 0,784 / 0,743 |
+| | F1 / ROC-AUC | 0,996 / 1,000 | 0,746 / 0,942 | 0,731 / 0,920 |
+
+**Lectura:**
+- La distancia entre Train y Test es la que se vio en las curvas de aprendizaje (sección 2.5): **sobreajuste**. En train los modelos casi no se equivocan (MSE de 0,01 a 0,05); en test el MSE sube a ~0,17–0,20.
+- Por MSE, la ResNet-50 y el Random Forest son los mejor calibrados en test (0,173 y 0,174).
+- Todas las cifras salen de `docs/resultados/comparacion/tabla_metricas_larga.csv`, que `scripts/entrenamiento/05_comparar_modelos.py` calcula a partir de los puntajes guardados de cada modelo.
 
 ---
 

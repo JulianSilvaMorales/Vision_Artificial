@@ -1,7 +1,9 @@
 """Metricas comunes y guardado de resultados por modelo.
 
 Cada modelo entrega una matriz de puntajes S (una fila por imagen del dataset, una columna por clase):
-probabilidades, o la decision_function del SVM (que no son probabilidades; por eso no tiene log loss).
+probabilidades, o la decision_function del SVM (que no son probabilidades; por eso no tiene log loss ni MSE).
+El MSE de clasificacion es el puntaje de Brier: promedio sobre las imagenes de sum_k (p_ik - y_ik)^2, con y en
+one-hot (0 = perfecto, 2 = el peor posible con 3 clases).
 Las filas que un modelo no predijo quedan en NaN y no entran en ningun conjunto evaluado.
 """
 import json
@@ -15,7 +17,7 @@ from sklearn.metrics import (accuracy_score, balanced_accuracy_score, classifica
 from src.utils.config import CLASES, RESULTADOS_DIR
 
 COLUMNAS = ["n", "exactitud", "precision_macro", "recall_macro", "f1_macro", "exactitud_balanceada",
-            "roc_auc_macro", "log_loss"]
+            "roc_auc_macro", "log_loss", "mse_brier", "rmse_brier"]
 
 
 def metricas(y, S, es_prob=True):
@@ -23,13 +25,15 @@ def metricas(y, S, es_prob=True):
     yp = S.argmax(1)
     p, r, f, _ = precision_recall_fscore_support(y, yp, labels=range(K), average="macro", zero_division=0)
     auc = float(np.mean([roc_auc_score((y == i).astype(int), S[:, i]) for i in range(K)]))
-    ll = float("nan")
+    ll = mse = float("nan")
     if es_prob:
         P = np.clip(S, 1e-7, 1)
         P = P / P.sum(1, keepdims=True)
         ll = log_loss(y, P, labels=list(range(K)))
+        mse = float(np.mean(np.sum((S - np.eye(K)[y]) ** 2, axis=1)))
     return dict(n=int(len(y)), exactitud=accuracy_score(y, yp), precision_macro=p, recall_macro=r, f1_macro=f,
-                exactitud_balanceada=balanced_accuracy_score(y, yp), roc_auc_macro=auc, log_loss=ll)
+                exactitud_balanceada=balanced_accuracy_score(y, yp), roc_auc_macro=auc, log_loss=ll,
+                mse_brier=mse, rmse_brier=float(np.sqrt(mse)))
 
 
 def tabla_modelo(nombre, S, es_prob, df, conj):

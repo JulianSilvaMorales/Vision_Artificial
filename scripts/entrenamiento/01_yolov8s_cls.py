@@ -1,7 +1,8 @@
 """Modelo 1 · YOLOv8s-cls con ajuste fino sobre el dataset de 35k.
 
-Repite la configuracion v2 de Jhon Jairo (AdamW, congelar 4 capas, dropout 0.3, coseno, sin aumento en linea:
-el aumento ya esta en los archivos). Ultralytics guarda como best.pt la epoca con mayor exactitud top-1 en val
+Repite la configuracion v2 de Jhon Jairo (AdamW, congelar 4 capas, dropout 0.3, coseno). El aumento principal ya esta
+en los archivos; en linea ultralytics solo aplica un recorte aleatorio con el 100 % del area (varia la proporcion) y
+brillo +-5 %. Ultralytics guarda como best.pt la epoca con mayor exactitud top-1 en val
 (val esta balanceado, asi que equivale a la exactitud balanceada). El test se evalua una sola vez al final.
 
 Uso (en Ubuntu, desde la raiz del repo):
@@ -77,7 +78,7 @@ hist = pd.DataFrame(dict(epoca=res.epoch, train_loss=res["train/loss"], val_loss
                          train_acc=np.nan, val_acc=res["metrics/accuracy_top1"], val_f1_macro=np.nan))
 
 config = dict(base="yolov8s-cls.pt (ImageNet)", **vars(args), cos_lr=True, warmup_epochs=1.0, imgsz=IMGSZ,
-              aumento_en_linea="ninguno (solo hsv_v=0.05)", epocas_corridas=int(res.epoch.max()),
+              aumento_en_linea="recorte aleatorio con el 100 % del area (RandomResizedCrop scale=(1,1); solo varia la proporcion 3:4 a 4:3) y brillo hsv_v=0.05; sin volteos, rotacion ni traslacion (el aumento principal ya esta en los archivos)", epocas_corridas=int(res.epoch.max()),
               criterio_best="exactitud top-1 en val completo (balanceado)")
 cerrar_modelo(SLUG, NOMBRE, S, True, df, conj, config, hist)
 MODELOS_DIR.mkdir(exist_ok=True)

@@ -21,7 +21,7 @@
     "cos_lr": true,
     "warmup_epochs": 1.0,
     "imgsz": 224,
-    "aumento_en_linea": "ninguno (solo hsv_v=0.05)",
+    "aumento_en_linea": "recorte aleatorio con el 100 % del area (RandomResizedCrop scale=(1,1); solo varia la proporcion 3:4 a 4:3) y brillo hsv_v=0.05; sin volteos, rotacion ni traslacion (el aumento principal ya esta en los archivos)",
     "epocas_corridas": 6,
     "criterio_best": "exactitud top-1 en val completo (balanceado)"
   },
