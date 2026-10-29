@@ -56,7 +56,73 @@ Lectura honesta de las cifras:
 - **Sobreajuste:** las redes logran su mejor resultado en la epoca 2 y llegan a ~97–99 % en train.
 - El SVM y el Random Forest usan las caracteristicas de la ResNet-50 ajustada (modelo 2). Con embeddings de ImageNet sin ajustar rinden mucho menos, asi que dependen del modelo 2; esto se declara en el informe.
 
-Detalle por modelo (metricas por conjunto, por clase y por nivel, matrices, curvas, configuracion y puntajes por imagen): [`docs/resultados/`](docs/resultados/README.md). Registro de los experimentos de ajuste: [`docs/resultados/experimentos_validacion.md`](docs/resultados/experimentos_validacion.md).
+Detalle por modelo (metricas por conjunto, por clase y por nivel, matrices, curvas, configuracion y puntajes por imagen): [`docs/resultados/`](docs/resultados/README.md). Registro de los experimentos de ajuste: [`docs/resultados/experimentos_validacion.md`](docs/resultados/experimentos_validacion.md). Ecuaciones y graficos de los 4 modelos: [`docs/modelo_matematico/`](docs/modelo_matematico/README.md).
+
+## Entrenamiento de los modelos: codigo, funcionamiento y resultados
+
+### Flujo
+
+```
+dataset 35k (train / val / test por paciente)
+   │
+   ├─ 01_yolov8s_cls.py ──────────────► modelo 1: YOLOv8s-cls ajustada
+   ├─ 02_resnet50.py ─────────────────► modelo 2: ResNet-50 ajustada
+   │                                        │
+   │                 03_embeddings.py ◄─────┘  (2048 caracteristicas por imagen, sin la capa final)
+   │                        │
+   │                 04_svm_random_forest.py ─► modelos 3 y 4: SVM y Random Forest (+ logistica y KNN)
+   │
+   └─ 05_comparar_modelos.py ─► tabla y figuras comparativas · 06_figuras_modelo_matematico.py ─► figuras del modelo matematico
+```
+
+Reglas que cumplen todos los scripts:
+- Al cargar el dataset verifican que ningun paciente este en dos particiones, que cada copia aumentada este en la particion de su original y que los archivos coincidan con `manifest_35k.csv`. Si algo falla, se detienen.
+- Los parametros se aprenden con train. La epoca y los hiperparametros se eligen con validacion (F1 macro). El test se evalua una sola vez, al final.
+- El escalador y el PCA se ajustan solo con train (sin fuga de datos).
+- Todo usa la semilla 42.
+
+### Que hace cada script (`scripts/entrenamiento/`)
+
+| Script | Como funciona | Que produce |
+|---|---|---|
+| `01_yolov8s_cls.py` | Ajuste fino de YOLOv8s-cls (preentrenada en ImageNet) con ultralytics. Configuracion: AdamW (lr 5e-4), 4 capas congeladas, dropout 0,3, coseno, hasta 15 epocas con paciencia 4. Ultralytics guarda la epoca con mejor exactitud en validacion. Despues predice las 35.007 imagenes | `docs/resultados/modelo1_yolov8s_cls/` y `models/yolov8s_cls.pt`. Mejor epoca: 2 de 6 |
+| `02_resnet50.py` | Ajuste fino de ResNet-50 (torchvision, ImageNet). Congela `conv1`, `bn1` y `layer1`, y cambia la capa final por Dropout(0,3) + Linear(2048→3). AdamW (lr 1e-4, weight decay 0,01), coseno, suavizado de etiquetas 0,1, aumento en linea suave y precision mixta. Guarda la epoca con mejor F1 macro en validacion, con parada temprana; `--reanudar` continua un entrenamiento cortado | `docs/resultados/modelo2_resnet50/` y `models/resnet50.pt`. Mejor epoca: 2 de 6 |
+| `03_embeddings.py` | Pasa las 35.007 imagenes por la ResNet-50 sin su capa final y guarda 2.048 valores por imagen. `--extractor ajustada` (oficial) usa la del modelo 2; `--extractor imagenet` la de ImageNet sin ajustar (comparacion) | `~/deepspine_runs/embeddings_resnet50_*.npz` (~290 MB, fuera del repo). Tarda ~35 s |
+| `04_svm_random_forest.py` | StandardScaler y PCA a 256 componentes, ajustados con train. Luego prueba en validacion SVM RBF (C = 0,1 / 0,5 / 2 / 8), Random Forest de 300 arboles (profundidad 10 / 20 / sin limite), regresion logistica (C = 0,01 / 0,1 / 1) y KNN (K = 5 / 15 / 31), y se queda con el mejor de cada uno | `docs/resultados/modelo3_svm/`, `modelo4_random_forest/`, `extra_*/` (o `ablacion_imagenet_*/`), y `models/svm.joblib` y `models/random_forest.joblib`, que guardan dentro el escalador y el PCA. Elegidos: SVM C = 0,1; Random Forest profundidad 20 |
+| `05_comparar_modelos.py` | Lee los puntajes de cada modelo, calcula las mismas metricas para todos, agrega un ensamble de los 4 como extra y elige el mejor por F1 macro en validacion | `docs/resultados/comparacion/`: tablas por metrica, recall por clase, matrices de confusion lado a lado, ROC y barras. Mejor por validacion: ResNet-50 |
+| `06_figuras_modelo_matematico.py` | Genera los graficos del modelo matematico a partir de los modelos entrenados: softmax, funcion de costo, tasa de aprendizaje, curvas, PCA, SVM, Random Forest y busqueda de hiperparametros | `docs/modelo_matematico/figuras/` y `valores.json` (cada cifra citada en el documento) |
+
+### Codigo comun (`src/`)
+
+| Archivo | Para que sirve |
+|---|---|
+| `src/utils/config.py` | Rutas (dataset, corridas, resultados, pesos), semilla, orden de las clases, normalizacion de ImageNet y `PIN_MEMORY = False` (en WSL2 la memoria fijada provoca errores de CUDA) |
+| `src/data/dataset.py` | Construye el indice de las 35.007 imagenes (particion, clase, paciente, nivel, original o copia), verifica que no haya fuga y define los conjuntos de evaluacion |
+| `src/models/resnet.py` | ResNet-50: construccion, congelado de capas, cargadores de imagenes con y sin aumento, prediccion, carga del modelo 2 y extractores de embeddings |
+| `src/training/evaluacion.py` | Cierre comun de cada modelo: metricas, reportes, matrices, curvas y `metadata.json` con la configuracion y las versiones |
+| `src/utils/metricas.py`, `src/utils/graficas.py` | Metricas iguales para todos los modelos (exactitud, precision, recall, F1, exactitud balanceada, ROC-AUC, log loss) y graficas |
+| `src/inference/predictor.py` | `Predictor` para la aplicacion web: `predecir(imagen, modelo)` y `predecir_todos(imagen)`. Acepta ruta, bytes, PIL o numpy. Devuelve clase, confianza y puntaje por clase, y oculta embeddings, escalador y PCA. Se verifico contra la evaluacion en 20 imagenes de test por modelo |
+
+### Donde quedo lo de los modelos entrenados
+
+| Que | Donde | En el repo |
+|---|---|---|
+| Metricas, reportes por clase y por nivel, matrices de confusion, curvas, configuracion y puntajes de las 35.007 imagenes de cada modelo | `docs/resultados/<modelo>/` | Si |
+| Comparacion de los 4 modelos (tablas y figuras) | `docs/resultados/comparacion/` | Si |
+| Registro de los experimentos de ajuste en validacion | `docs/resultados/experimentos_validacion.md` | Si |
+| Modelo matematico (ecuaciones, graficos y valores) | `docs/modelo_matematico/` | Si |
+| Codigo de entrenamiento, evaluacion e inferencia | `scripts/entrenamiento/` y `src/` | Si |
+| Descripcion y hashes SHA-256 de los pesos | `models/README.md` | Si |
+| **Pesos de los 4 modelos** (`yolov8s_cls.pt`, `resnet50.pt`, `svm.joblib`, `random_forest.joblib`, ~121 MB en total) | **GitHub Release** del repositorio; se descargan en `models/` | No: van en la Release para no gastar la cuota de Git LFS |
+| Embeddings, checkpoints por epoca y experimentos descartados | `~/deepspine_runs/` de quien entrena | No: se regeneran con los scripts |
+| Imagenes del dataset de 35k | Enlace de Drive / `scripts/build_dataset.py` | No |
+
+### Proceso seguido
+1. **Entorno:** el entrenamiento se hizo en Ubuntu 24.04 (WSL2) con la GPU local, en lugar de Colab, para evitar desconexiones. Se uso PyTorch porque YOLOv8 (ultralytics) solo existe para PyTorch.
+2. **Problema resuelto:** en WSL2 los DataLoader fallaban con `CUDA error: out of memory` al reservar memoria fijada. Se desactivo `pin_memory`.
+3. **Primera version:** YOLO y ResNet-50 quedaron en 87,8 % de exactitud sobre los originales de test. SVM y Random Forest sobre embeddings de ImageNet sin ajustar quedaron en 80 % y 75 %.
+4. **Ajuste con validacion** para intentar llegar al 89 %: varias semillas, regularizacion de la ResNet (suavizado de etiquetas y aumento en linea), ensambles y correccion por la proporcion de clases. Se adopto la ResNet regularizada (mejor F1 en validacion). SVM y Random Forest pasaron a usar las caracteristicas de esa ResNet; su F1 en validacion subio de 0,65 a 0,80 (SVM) y de 0,60 a 0,79 (Random Forest). La correccion por proporcion se descarto porque hundia la deteccion de Degeneracion.
+5. **Evaluacion final:** los 4 modelos se evaluaron una sola vez en test, con las metricas de la tabla de [Resultados](#resultados).
 
 ## Arquitectura del proyecto
 
@@ -134,7 +200,7 @@ Vision_Artificial/
 │           └── utils/                   # Helpers propios del frontend
 │
 ├── tests/                       # Pruebas unitarias del codigo en src/
-├── docs/                        # Guias, resultados de los modelos (docs/resultados/), informes y referencias
+├── docs/                        # Guias, resultados (docs/resultados/), modelo matematico (docs/modelo_matematico/) y referencias
 └── assets/                      # Imagenes/recursos usados en el README
 ```
 
