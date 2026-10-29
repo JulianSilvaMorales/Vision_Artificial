@@ -30,6 +30,9 @@ async function cargarEstado() {
     if (s.faltan.length) {
       e.className = "estado error";
       e.textContent = `Faltan modelos: ${s.faltan.join(", ")} · ejecuta python scripts/descargar_modelos.py`;
+    } else if (!s.imagenes_demo_ok) {
+      e.className = "estado error";
+      e.textContent = "Las imágenes de data/demo no se descargaron (falta Git LFS) · ejecuta: git lfs install y git lfs pull";
     } else {
       e.className = "estado ok";
       e.textContent = `4 modelos cargables · ${s.dispositivo.toUpperCase()} · commit ${s.commit || "?"} · ${s.casos_demo} casos`;
