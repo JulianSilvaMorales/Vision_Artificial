@@ -1,6 +1,6 @@
 # webapp · MVP de demostración (temporal)
 
-> **Estado:** MVP para la entrega del Hito 2 (2026-10-30). Demuestra la **simulación de resultados** y la **trazabilidad** de los 4 modelos. La webapp formal (backend ordenado y frontend en React) la desarrolla Juan Manuel Tengonó a partir de esta API (ver [Siguientes pasos](#siguientes-pasos-para-la-webapp-formal)). Cuando exista, este documento y la carpeta `frontend/mvp/` se reemplazan.
+> **TEMPORAL.** MVP solo para la entrega del Hito 2 (2026-10-30): demuestra la **simulación de resultados** y la **trazabilidad** de los 4 modelos. **No es la webapp final.** La webapp formal (backend ordenado y frontend en React) la desarrolla Juan Manuel Tengonó a partir de esta API. Cuando funcione, **hay que borrar los archivos temporales del MVP** y reescribir este documento (ver [qué borrar y qué conservar](#qué-borrar-y-qué-conservar)).
 
 Se ejecuta en local, en **Windows, Linux o macOS**, sin GPU. No hace falta desplegarlo ni tener el dataset de 35k: usa 45 casos de test incluidos en el repo (`data/demo/`) y los pesos de los 4 modelos del [GitHub Release `modelos-v1.0`](https://github.com/JulianSilvaMorales/Vision_Artificial/releases/tag/modelos-v1.0).
 
@@ -166,7 +166,7 @@ Responsable: **Juan Manuel Tengonó**. El MVP deja resuelto el consumo de los mo
 2. **Conectar React con el backend:**
    - en desarrollo, React en su propio puerto (por ejemplo, Vite en 5173) llamando a `http://localhost:8000/api`. Hay que agregar `CORSMiddleware` en `main.py` para ese origen;
    - en producción, servir la *build* de React desde FastAPI, cambiando el `app.mount("/", ...)` de `main.py` para que apunte a `webapp/frontend/dist`.
-3. **Retirar `webapp/frontend/mvp/`** cuando la versión en React cubra sus 4 pestañas, y actualizar este README y la sección *Demo (MVP)* del README raíz.
+3. **Borrar los archivos temporales del MVP** cuando la versión en React cubra sus 4 pestañas. Ver la tabla de abajo.
 4. **Mantener:**
    - el aviso "herramienta académica, no diagnóstica";
    - la aclaración de que los 45 casos son balanceados y no dan la exactitud oficial;
@@ -178,3 +178,27 @@ Responsable: **Juan Manuel Tengonó**. El MVP deja resuelto el consumo de los mo
    - una opción del ensamble en la interfaz, si el equipo la quiere.
 
 **Reglas que no cambian:** no reentrenar ni cambiar los pesos sin publicar un nuevo Release con sus hashes, y no tocar `data/demo/casos.csv` a mano (se regenera con su script).
+
+### Qué borrar y qué conservar
+
+Cuando la webapp formal funcione, el MVP sobra. Hay que borrar sus archivos temporales para que el repo no quede con archivos innecesarios. Pero **no todo lo de esta carpeta es temporal**: el backend y el `Predictor` son la base de la webapp formal.
+
+| Archivo o carpeta | Qué hacer | Por qué |
+|---|---|---|
+| `webapp/frontend/mvp/` (index.html, styles.css, app.js) | **Borrar** | Es la página temporal; la reemplaza el frontend en React |
+| `webapp/iniciar_mvp.bat`, `webapp/iniciar_mvp.sh` | **Borrar** (o reemplazarlos por scripts de arranque de la webapp formal) | Arrancan el MVP |
+| `.venv-mvp*/` en `.gitignore` | **Quitar la línea** si se borran los scripts | Solo la usan esos scripts |
+| `app.mount("/", ...)` en `webapp/backend/main.py` | **Cambiar** para servir la *build* de React, o quitarlo | Hoy sirve la página del MVP |
+| Este `webapp/README.md` y la sección *Demo (MVP)* del README raíz | **Reescribir** para la webapp formal | Describen el MVP |
+| `webapp/backend/` (API, esquemas, servicios) | **Conservar** y mejorar | Es la base del backend formal; no es temporal |
+| `src/inference/predictor.py` | **Conservar** | Lógica de los 4 modelos |
+| `scripts/descargar_modelos.py` | **Conservar** | Descarga y verifica los pesos del Release |
+| `data/demo/` y `scripts/demo/` | **Conservar** si la webapp formal mantiene la simulación y la trazabilidad (recomendado para la sustentación); si no, borrar los dos juntos | Son los casos de test de la demostración |
+
+**No borres nada del MVP antes de que la webapp formal funcione:** hasta entonces es lo único que demuestra los modelos.
+
+Para borrar (desde la raíz del repo, en una rama `feature/tengono-...`):
+```
+git rm -r webapp/frontend/mvp webapp/iniciar_mvp.bat webapp/iniciar_mvp.sh
+git commit -m "chore(frontend): retirar el MVP temporal reemplazado por la webapp formal"
+```
