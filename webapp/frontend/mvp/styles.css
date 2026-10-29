@@ -1,0 +1,78 @@
+:root {
+  --fondo: #f6f7f9; --tarjeta: #fff; --borde: #dde1e6; --texto: #1f2933; --suave: #616e7c;
+  --azul: #2563eb; --ok: #15803d; --mal: #b91c1c; --aviso: #92400e;
+  --degeneracion: #d62728; --normal: #2ca02c; --protrusion: #1f77b4;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--fondo); color: var(--texto); font-size: 14px; }
+header { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px; background: #0f172a; color: #fff; }
+h1 { margin: 0; font-size: 20px; }
+h2 { font-size: 16px; margin: 0 0 8px; }
+h3 { font-size: 14px; margin: 0 0 6px; }
+.sub { margin: 2px 0 0; color: #cbd5e1; font-size: 13px; }
+.estado { font-size: 12px; padding: 6px 10px; border-radius: 6px; background: #334155; }
+.estado.ok { background: #166534; } .estado.error { background: #991b1b; }
+.aviso { margin: 0; padding: 6px 24px; background: #fef3c7; color: var(--aviso); font-size: 12px; }
+nav { display: flex; gap: 4px; padding: 10px 24px 0; border-bottom: 1px solid var(--borde); }
+.tab { border: 1px solid var(--borde); border-bottom: none; background: #e9edf2; padding: 8px 14px; border-radius: 6px 6px 0 0; cursor: pointer; font-size: 13px; }
+.tab.activa { background: var(--tarjeta); font-weight: 600; }
+main { padding: 16px 24px; }
+.panel { display: none; } .panel.activo { display: block; }
+.nota { color: var(--suave); font-size: 12px; margin: 4px 0 10px; }
+.nota.alerta { color: var(--aviso); }
+.dos-columnas { display: grid; grid-template-columns: 330px 1fr; gap: 18px; align-items: start; }
+aside { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 8px; padding: 12px; position: sticky; top: 10px; }
+.filtros { display: flex; gap: 6px; margin-bottom: 8px; } .filtros select { flex: 1; padding: 4px; }
+.galeria { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; max-height: 70vh; overflow-y: auto; }
+.miniatura { position: relative; cursor: pointer; border: 2px solid transparent; border-radius: 4px; }
+.miniatura img { width: 100%; display: block; border-radius: 3px; }
+.miniatura.sel { border-color: var(--azul); }
+.miniatura .marca { position: absolute; left: 2px; bottom: 2px; width: 9px; height: 9px; border-radius: 50%; border: 1px solid #fff; }
+.vacio { color: var(--suave); padding: 30px; text-align: center; background: var(--tarjeta); border: 1px dashed var(--borde); border-radius: 8px; }
+.tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 8px; padding: 12px; }
+.ficha { display: flex; gap: 14px; align-items: flex-start; }
+.ficha img { width: 128px; border-radius: 4px; image-rendering: pixelated; }
+.ficha dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; font-size: 13px; }
+.ficha dt { color: var(--suave); }
+button.principal { background: var(--azul); color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+button.principal:disabled { background: #94a3b8; cursor: wait; }
+.predicciones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0; }
+.pred .clase { font-size: 15px; font-weight: 600; margin: 2px 0 6px; }
+.barra { display: grid; grid-template-columns: 82px 1fr 40px; align-items: center; gap: 5px; font-size: 11px; margin: 2px 0; }
+.barra .pista { background: #edf0f3; height: 9px; border-radius: 4px; overflow: hidden; }
+.barra .relleno { height: 100%; }
+.chip { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; margin: 2px 2px 0 0; }
+.chip.ok { background: #dcfce7; color: var(--ok); } .chip.mal { background: #fee2e2; color: var(--mal); } .chip.neutro { background: #e2e8f0; color: var(--suave); }
+.resumen { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 6px 0 14px; font-size: 13px; }
+/* diagrama de trazabilidad */
+.flujo { display: grid; grid-template-columns: 1.05fr 1.2fr 1.1fr 1fr; gap: 10px; align-items: stretch; margin-top: 8px; }
+.columna { display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+.caja { background: var(--tarjeta); border: 1px solid var(--borde); border-left: 4px solid var(--azul); border-radius: 6px; padding: 8px 10px; font-size: 12px; position: relative; }
+.caja.compartida { border-left-color: #7c3aed; background: #faf5ff; }
+.caja.yolo { border-left-color: #f59e0b; }
+.caja.salida { border-left-color: var(--ok); }
+.caja h4 { margin: 0 0 4px; font-size: 12px; }
+.caja .dato { color: var(--suave); }
+.caja::after { content: "➜"; position: absolute; right: -15px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px; }
+.caja.salida::after, .sin-flecha::after { content: none; }
+.mini { display: flex; align-items: flex-end; gap: 1px; height: 34px; margin-top: 4px; }
+.mini span { flex: 1; background: #7c3aed; min-height: 1px; }
+.mini.pca span { background: var(--azul); }
+.imgs224 { display: flex; gap: 6px; } .imgs224 img { width: 74px; border-radius: 3px; }
+.leyenda { font-size: 11px; color: var(--suave); margin-top: 6px; }
+/* simulacion y tablas */
+.matrices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0; }
+.matriz table { border-collapse: collapse; font-size: 11px; width: 100%; }
+.matriz td, .matriz th { border: 1px solid var(--borde); text-align: center; padding: 4px; }
+.matriz th { background: #f1f5f9; font-weight: 500; }
+.tabla { border-collapse: collapse; width: 100%; background: var(--tarjeta); font-size: 12px; margin-top: 10px; }
+.tabla th, .tabla td { border: 1px solid var(--borde); padding: 5px 7px; text-align: left; }
+.tabla th { background: #f1f5f9; }
+.tabla td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.figuras { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+.figuras figure { margin: 0; background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 8px; padding: 8px; }
+.figuras figure:first-child { grid-column: 1 / -1; }
+.figuras img { width: 100%; }
+figcaption { font-size: 12px; color: var(--suave); text-align: center; }
+footer { padding: 14px 24px; color: var(--suave); font-size: 12px; }
+code { background: #eef2f7; padding: 0 4px; border-radius: 3px; }
