@@ -55,6 +55,7 @@ class EstadoSistema(BaseModel):
     estado: str
     dispositivo: str
     commit: Optional[str]
+    imagenes_demo_ok: bool
     modelos_disponibles: List[str]
     faltan: List[str]
     casos_demo: int

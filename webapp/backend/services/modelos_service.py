@@ -6,7 +6,8 @@ from functools import lru_cache
 
 import pandas as pd
 
-from webapp.backend.core.config import CASOS_CSV, DISPOSITIVO, MODELOS, MODELOS_DIR, RAIZ_REPO, RESULTADOS_DIR
+from webapp.backend.core.config import (CASOS_CSV, DISPOSITIVO, IMAGENES_DEMO, MODELOS, MODELOS_DIR, RAIZ_REPO,
+                                        RESULTADOS_DIR)
 
 CLAVES_CONFIG = ("base", "mejor_epoca", "epocas_corridas", "criterio_best", "criterio", "elegido", "ls", "lr", "lr0",
                  "pca_componentes", "pca_varianza_explicada", "clasificador", "entrada", "salida")
@@ -34,10 +35,23 @@ def faltantes():
     return [m for m, d in MODELOS.items() if not (MODELOS_DIR / d["archivo"]).exists()]
 
 
+def imagenes_demo_ok():
+    """False si las imagenes de data/demo son punteros de Git LFS (se clono sin Git LFS)."""
+    imgs = sorted(IMAGENES_DEMO.glob("*.png"))
+    return bool(imgs) and imgs[0].read_bytes()[:4] == b"\x89PNG"
+
+
 def estado():
     falta = faltantes()
     n_casos = len(pd.read_csv(CASOS_CSV)) if CASOS_CSV.exists() else 0
-    return dict(estado="ok" if not falta else "faltan_modelos", dispositivo=DISPOSITIVO, commit=commit_actual(),
+    imgs_ok = imagenes_demo_ok()
+    if falta:
+        est = "faltan_modelos"
+    elif not imgs_ok:
+        est = "faltan_imagenes_lfs"
+    else:
+        est = "ok"
+    return dict(estado=est, dispositivo=DISPOSITIVO, commit=commit_actual(), imagenes_demo_ok=imgs_ok,
                 modelos_disponibles=[m for m in MODELOS if m not in falta], faltan=falta, casos_demo=n_casos)
 
 
