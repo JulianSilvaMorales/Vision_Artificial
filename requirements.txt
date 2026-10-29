@@ -1,0 +1,11 @@
+# Dependencias del pipeline de datos (scripts/) y de los cuadernos 00 y 01.
+# Versiones sin fijar: se pueden fijar con `pip freeze` una vez definido el entorno del equipo.
+numpy
+pandas
+opencv-python-headless
+pydicom
+matplotlib
+scikit-learn
+statsmodels
+ultralytics   # trae PyTorch y torchvision
+roboflow      # solo los cuadernos 00 y 01 (en Colab se instala con !pip)

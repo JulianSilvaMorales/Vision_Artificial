@@ -20,3 +20,7 @@ node_modules/
 # quitar o ajustar estas lineas y agregar la extension al .gitattributes)
 models/*.pt
 models/*.h5
+
+# Excepciones: pesos pequenos que si se versionan (con Git LFS)
+!models/best_disc_detector.pt
+!models/preetiquetado_semilla_v2.pt
