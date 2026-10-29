@@ -24,3 +24,16 @@ models/*.h5
 # Excepciones: pesos pequenos que si se versionan (con Git LFS)
 !models/best_disc_detector.pt
 !models/preetiquetado_semilla_v2.pt
+
+# Dataset de 35.007 imagenes descomprimido y su zip (no se versionan; ver data/processed/README.md)
+data/processed/DeepSpine_Dataset_35k.zip
+data/processed/train/
+data/processed/val/
+data/processed/test/
+
+# Cuadernos temporales de referencia (no se suben)
+notebooks/temporal/
+
+# Pesos y artefactos de entrenamiento (se publican en GitHub Releases)
+models/*.joblib
+models/*.npz
