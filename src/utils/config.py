@@ -21,6 +21,9 @@ SEMILLA = 42
 IMGSZ = 224
 CLASES = ["Degeneracion_Discal", "Normal", "Protrusion"]   # orden alfabetico, igual que ImageFolder y ultralytics
 MEAN, STD = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]  # normalizacion de ImageNet
+# En WSL2 la memoria fijada (pinned) del host es limitada: con pin_memory=True el DataLoader falla con
+# "CUDA error: out of memory" en cuMemHostAlloc aunque la GPU tenga memoria libre.
+PIN_MEMORY = False
 
 
 def fijar_semilla(s=SEMILLA):

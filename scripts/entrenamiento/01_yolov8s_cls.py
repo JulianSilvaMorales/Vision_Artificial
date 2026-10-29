@@ -20,7 +20,7 @@ import pandas as pd
 
 from src.data.dataset import cargar_indice, conjuntos, resumen, verificar
 from src.training.evaluacion import cerrar_modelo
-from src.utils.config import CLASES, DATA_DIR, IMGSZ, MODELOS_DIR, RUNS_DIR, SEMILLA, fijar_semilla
+from src.utils.config import CLASES, DATA_DIR, IMGSZ, MODELOS_DIR, PIN_MEMORY, RUNS_DIR, SEMILLA, fijar_semilla
 
 SLUG, NOMBRE = "modelo1_yolov8s_cls", "1 · YOLOv8s-cls"
 
@@ -43,6 +43,12 @@ print("Pacientes por particion:", verificar(df), "· sin fuga · coincide con ma
 conj = conjuntos(df)
 
 from ultralytics import YOLO
+from ultralytics.data import build as yolo_build
+
+# build_dataloader no expone pin_memory como argumento de train(); se cambia su valor por defecto (ver PIN_MEMORY)
+_d = list(yolo_build.build_dataloader.__defaults__)
+_d[3] = PIN_MEMORY                      # (shuffle, rank, drop_last, pin_memory, device)
+yolo_build.build_dataloader.__defaults__ = tuple(_d)
 
 RUNS_DIR.mkdir(parents=True, exist_ok=True)
 os.chdir(RUNS_DIR)                      # yolov8s-cls.pt se descarga aqui, fuera del repo

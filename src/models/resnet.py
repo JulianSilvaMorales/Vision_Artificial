@@ -7,7 +7,7 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms as T
 
-from src.utils.config import CLASES, IMGSZ, MEAN, STD, SEMILLA
+from src.utils.config import CLASES, IMGSZ, MEAN, PIN_MEMORY, STD, SEMILLA
 
 TF = T.Compose([T.Resize((IMGSZ, IMGSZ)), T.ToTensor(), T.Normalize(MEAN, STD)])
 CAPAS_CONGELADAS = ("conv1", "bn1", "layer1")
@@ -29,7 +29,7 @@ def cargador(rutas, y=None, shuffle=False, batch=64, workers=8):
     g = torch.Generator()
     g.manual_seed(SEMILLA)
     return DataLoader(DS(rutas, y), batch_size=batch, shuffle=shuffle, num_workers=workers, generator=g,
-                      pin_memory=torch.cuda.is_available(), persistent_workers=workers > 0)
+                      pin_memory=PIN_MEMORY, persistent_workers=workers > 0)
 
 
 def construir_resnet(dropout=0.3, preentrenada=True):
