@@ -1,6 +1,6 @@
 {
   "modelo": "extra · KNN",
-  "fecha": "2026-10-29T10:37:43",
+  "fecha": "2026-10-29T11:46:52",
   "semilla": 42,
   "clases": [
     "Degeneracion_Discal",
@@ -8,9 +8,9 @@
     "Protrusion"
   ],
   "config": {
-    "entrada": "embeddings ResNet-50 ImageNet congelada (2048) -> StandardScaler -> PCA",
+    "entrada": "embeddings (2048) de ResNet-50 del modelo 2 (models/resnet50.pt), fc=Identity -> StandardScaler -> PCA",
     "pca_componentes": 256,
-    "pca_varianza_explicada": 0.5827,
+    "pca_varianza_explicada": 0.8004,
     "clasificador": "KNeighborsClassifier, distancia euclidea",
     "rejilla": [
       {
@@ -26,22 +26,22 @@
     "busqueda_val": [
       {
         "n_neighbors": 5,
-        "f1_macro_val": 0.5241,
+        "f1_macro_val": 0.8024,
         "seg": 0
       },
       {
         "n_neighbors": 15,
-        "f1_macro_val": 0.5317,
+        "f1_macro_val": 0.8091,
         "seg": 0
       },
       {
         "n_neighbors": 31,
-        "f1_macro_val": 0.5284,
+        "f1_macro_val": 0.8107,
         "seg": 1
       }
     ],
     "elegido": {
-      "n_neighbors": 15
+      "n_neighbors": 31
     },
     "criterio": "F1 macro en val completo",
     "salida": "probabilidades"

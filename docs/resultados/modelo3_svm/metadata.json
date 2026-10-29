@@ -1,6 +1,6 @@
 {
   "modelo": "3 · SVM (RBF) sobre embeddings",
-  "fecha": "2026-10-29T10:36:54",
+  "fecha": "2026-10-29T11:45:29",
   "semilla": 42,
   "clases": [
     "Degeneracion_Discal",
@@ -8,11 +8,14 @@
     "Protrusion"
   ],
   "config": {
-    "entrada": "embeddings ResNet-50 ImageNet congelada (2048) -> StandardScaler -> PCA",
+    "entrada": "embeddings (2048) de ResNet-50 del modelo 2 (models/resnet50.pt), fc=Identity -> StandardScaler -> PCA",
     "pca_componentes": 256,
-    "pca_varianza_explicada": 0.5827,
+    "pca_varianza_explicada": 0.8004,
     "clasificador": "SVC kernel RBF, gamma='scale', uno contra el resto",
     "rejilla": [
+      {
+        "C": 0.1
+      },
       {
         "C": 0.5
       },
@@ -25,23 +28,28 @@
     ],
     "busqueda_val": [
       {
+        "C": 0.1,
+        "f1_macro_val": 0.8006,
+        "seg": 5
+      },
+      {
         "C": 0.5,
-        "f1_macro_val": 0.6361,
-        "seg": 59
+        "f1_macro_val": 0.7904,
+        "seg": 3
       },
       {
         "C": 2,
-        "f1_macro_val": 0.5901,
-        "seg": 120
+        "f1_macro_val": 0.7819,
+        "seg": 3
       },
       {
         "C": 8,
-        "f1_macro_val": 0.5671,
-        "seg": 161
+        "f1_macro_val": 0.7771,
+        "seg": 4
       }
     ],
     "elegido": {
-      "C": 0.5
+      "C": 0.1
     },
     "criterio": "F1 macro en val completo",
     "salida": "decision_function (no son probabilidades)"

@@ -1,6 +1,6 @@
 {
   "modelo": "2 · ResNet-50 ajustada",
-  "fecha": "2026-10-29T10:27:21",
+  "fecha": "2026-10-29T11:22:51",
   "semilla": 42,
   "clases": [
     "Degeneracion_Discal",
@@ -10,8 +10,10 @@
   "config": {
     "base": "torchvision resnet50 IMAGENET1K_V2",
     "congeladas": "conv1, bn1, layer1",
-    "epocas": 8,
-    "paciencia": 3,
+    "epocas": 10,
+    "paciencia": 4,
+    "ls": 0.1,
+    "sin_aumento": false,
     "lr": 0.0001,
     "wd": 0.01,
     "dropout": 0.3,

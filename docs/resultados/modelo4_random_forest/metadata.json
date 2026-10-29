@@ -1,6 +1,6 @@
 {
   "modelo": "4 · Random Forest sobre embeddings",
-  "fecha": "2026-10-29T10:37:21",
+  "fecha": "2026-10-29T11:45:59",
   "semilla": 42,
   "clases": [
     "Degeneracion_Discal",
@@ -8,9 +8,9 @@
     "Protrusion"
   ],
   "config": {
-    "entrada": "embeddings ResNet-50 ImageNet congelada (2048) -> StandardScaler -> PCA",
+    "entrada": "embeddings (2048) de ResNet-50 del modelo 2 (models/resnet50.pt), fc=Identity -> StandardScaler -> PCA",
     "pca_componentes": 256,
-    "pca_varianza_explicada": 0.5827,
+    "pca_varianza_explicada": 0.8004,
     "clasificador": "RandomForestClassifier, 300 arboles",
     "rejilla": [
       {
@@ -26,22 +26,22 @@
     "busqueda_val": [
       {
         "max_depth": 10,
-        "f1_macro_val": 0.5923,
+        "f1_macro_val": 0.7936,
         "seg": 7
       },
       {
         "max_depth": 20,
-        "f1_macro_val": 0.5922,
-        "seg": 9
+        "f1_macro_val": 0.794,
+        "seg": 11
       },
       {
         "max_depth": null,
-        "f1_macro_val": 0.5984,
-        "seg": 9
+        "f1_macro_val": 0.7931,
+        "seg": 10
       }
     ],
     "elegido": {
-      "max_depth": null
+      "max_depth": 20
     },
     "criterio": "F1 macro en val completo",
     "salida": "probabilidades"

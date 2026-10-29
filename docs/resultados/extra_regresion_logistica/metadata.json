@@ -1,6 +1,6 @@
 {
   "modelo": "extra · Regresion logistica",
-  "fecha": "2026-10-29T10:37:40",
+  "fecha": "2026-10-29T11:46:47",
   "semilla": 42,
   "clases": [
     "Degeneracion_Discal",
@@ -8,9 +8,9 @@
     "Protrusion"
   ],
   "config": {
-    "entrada": "embeddings ResNet-50 ImageNet congelada (2048) -> StandardScaler -> PCA",
+    "entrada": "embeddings (2048) de ResNet-50 del modelo 2 (models/resnet50.pt), fc=Identity -> StandardScaler -> PCA",
     "pca_componentes": 256,
-    "pca_varianza_explicada": 0.5827,
+    "pca_varianza_explicada": 0.8004,
     "clasificador": "LogisticRegression multinomial (modelo base del curso)",
     "rejilla": [
       {
@@ -26,18 +26,18 @@
     "busqueda_val": [
       {
         "C": 0.01,
-        "f1_macro_val": 0.6649,
-        "seg": 6
+        "f1_macro_val": 0.7866,
+        "seg": 11
       },
       {
         "C": 0.1,
-        "f1_macro_val": 0.6633,
-        "seg": 5
+        "f1_macro_val": 0.7804,
+        "seg": 20
       },
       {
         "C": 1,
-        "f1_macro_val": 0.6633,
-        "seg": 6
+        "f1_macro_val": 0.7735,
+        "seg": 15
       }
     ],
     "elegido": {
