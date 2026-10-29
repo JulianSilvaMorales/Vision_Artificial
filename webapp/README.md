@@ -40,7 +40,7 @@ El script hace todo en orden:
 1. Crea un entorno virtual `.venv-mvp/` en la raíz del repo (solo la primera vez).
 2. Instala `webapp/backend/requirements.txt` (solo la primera vez; tarda varios minutos).
 3. Ejecuta `git lfs pull` para traer las imágenes de demostración, y `scripts/descargar_modelos.py` para bajar los 4 pesos a `models/` y verificar su SHA-256. Si ya están, no los vuelve a descargar.
-4. Levanta el servidor y, en Windows, abre el navegador en **http://localhost:8000**.
+4. Levanta el servidor, que primero carga los 4 modelos (unos segundos), y en Windows abre el navegador en **http://127.0.0.1:8000** cuando ya está listo. Es lo mismo que `http://localhost:8000`.
 
 Las siguientes veces solo hace los pasos 3 y 4, en unos segundos. Para detener el servidor: `Ctrl + C` en la terminal.
 
@@ -66,7 +66,7 @@ python scripts/descargar_modelos.py
 python -m uvicorn webapp.backend.main:app --port 8000
 ```
 
-Abrir **http://localhost:8000**. La documentación interactiva de la API está en **http://localhost:8000/docs**.
+Abrir **http://127.0.0.1:8000** (o `http://localhost:8000`) cuando la terminal diga `Application startup complete`. La documentación interactiva de la API está en **http://127.0.0.1:8000/docs**.
 
 ### 5. Comprobar que todo está bien
 La barra superior de la página debe decir **"4 modelos cargables · CPU · commit … · 45 casos"** en verde. Si está en rojo, dice qué falta. También se puede consultar `http://localhost:8000/api/salud`.
@@ -81,7 +81,9 @@ La barra superior de la página debe decir **"4 modelos cargables · CPU · comm
 | Error al cargar `svm.joblib` o `random_forest.joblib` | Otra versión de scikit-learn | Debe ser la 1.9.1: `pip install scikit-learn==1.9.1` |
 | `[Errno 98]` / `10048`: el puerto está en uso | Ya hay algo en el 8000 | Usar otro puerto: `... uvicorn webapp.backend.main:app --port 8001` |
 | `ModuleNotFoundError: No module named 'webapp'` o `'src'` | Se ejecutó desde otra carpeta | Ejecutar desde la **raíz** del repo |
-| La primera predicción tarda varios segundos | Se están cargando los 4 modelos | Normal; luego son ~0,2 s por imagen |
+| El navegador dice *"localhost rechazó la conexión"* | Se abrió antes de que el servidor terminara de cargar los modelos | Esperar a que la terminal diga `Application startup complete` y recargar. Los scripts ya abren el navegador solo cuando el servidor está listo |
+| La simulación de 45 casos tarda minutos | CPU lenta, o portátil con batería en modo de ahorro | Conectar el cargador y poner Windows en "Mejor rendimiento". Referencia: ~6 s en un i5-12400 de escritorio; en un portátil con batería se midieron ~155 s |
+| Queremos usarlo sin internet (en clase) | — | Después de la primera ejecución funciona sin conexión: los scripts no reinstalan nada, los modelos se verifican en local ("OK (ya estaba)") y la página no usa recursos externos. Probarlo antes con el wifi apagado |
 | `pip` no encuentra `torch` para tu versión de Python | Python demasiado viejo o demasiado nuevo | Usar Python 3.12 a 3.14 |
 | Windows: `OSError: [Errno 2] No such file or directory: ...torch\include\...` al instalar | El repo está en una ruta muy larga y Windows limita las rutas a 260 caracteres | Clonar en una ruta corta (por ejemplo `C:\Users\<usuario>\Documents\Vision_Artificial`) o activar las rutas largas de Windows |
 | Usas el mismo clon desde Windows y desde WSL | El `.venv-mvp` de un sistema no sirve en el otro | En WSL: `MVP_VENV=.venv-mvp-linux bash webapp/iniciar_mvp.sh` |

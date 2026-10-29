@@ -30,4 +30,5 @@ git lfs pull > /dev/null 2>&1 || echo "      (git lfs no disponible: si las imag
 "$VENV/bin/python" scripts/descargar_modelos.py
 
 echo "[4/4] Iniciando el servidor en http://localhost:8000  (Ctrl+C para detenerlo)"
+echo "      Primero carga los 4 modelos; cuando diga 'Application startup complete', abre esa direccion."
 exec "$VENV/bin/python" -m uvicorn webapp.backend.main:app --port 8000

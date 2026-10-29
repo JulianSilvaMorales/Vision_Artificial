@@ -83,6 +83,11 @@ class Predictor:
         self._cache[nombre] = m
         return m
 
+    def cargar_todos(self):
+        """Carga los 4 modelos de una vez (por ejemplo, al arrancar el servidor) para que la primera prediccion sea rapida."""
+        for nombre in MODELOS:
+            self._cargar(nombre)
+
     def _tensor(self, img):
         from src.models.resnet import TF
 
