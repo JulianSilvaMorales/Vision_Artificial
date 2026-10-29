@@ -10,7 +10,7 @@ Todas las cifras salen de los modelos entrenados. Las figuras y los valores cita
 
 ## 1. Planteamiento: X e y
 
-**Datos.** $\mathcal{D} = \{(x_i, y_i)\}_{i=1}^{N}$, con $N = 35.007$ imágenes de 399 pacientes, divididas **por paciente** en train (24.501 imágenes, 279 pacientes), validación (5.253, 60) y test (5.253, 60).
+**Datos.** $\mathcal{D} = \lbrace (x_i, y_i)\rbrace _{i=1}^{N}$, con $N = 35.007$ imágenes de 399 pacientes, divididas **por paciente** en train (24.501 imágenes, 279 pacientes), validación (5.253, 60) y test (5.253, 60).
 
 **Variables de entrada (X).** Cada imagen es una matriz de intensidades. El recorte (escala de grises) se redimensiona a $224 \times 224$ píxeles y se repite en los 3 canales que esperan las redes preentrenadas. Los valores se llevan a $[0, 1]$. La ResNet-50 (y, a través de ella, los modelos 3 y 4) normaliza además cada canal $c$ con la media y la desviación de ImageNet, igual que `StandardScaler`; YOLOv8 usa los valores en $[0, 1]$ sin normalizar:
 
@@ -20,11 +20,11 @@ En un modelo tabular, X son columnas como "horas de estudio" o "asistencia". Aqu
 
 **Variable objetivo (y).** Clasificación **multiclase** con $K = 3$ clases nominales (sin orden):
 
-$$y \in \{0, 1, 2\} = \{\text{Degeneración},\ \text{Normal},\ \text{Protrusión}\}, \qquad \mathbf{y} = \text{one-hot}(y) \in \{0,1\}^3$$
+$$y \in \lbrace 0, 1, 2\rbrace  = \lbrace \text{Degeneración},\ \text{Normal},\ \text{Protrusión}\rbrace , \qquad \mathbf{y} = \text{one-hot}(y) \in \lbrace 0,1\rbrace ^3$$
 
 **Qué se busca.** Una función con parámetros $\theta$ que asigne a cada imagen una probabilidad para cada clase, y luego la clase más probable:
 
-$$f_\theta : \mathbb{R}^{3 \times 224 \times 224} \to \Delta^{2} = \Big\{ p \in [0,1]^3 : \textstyle\sum_k p_k = 1 \Big\}, \qquad \hat{y} = \arg\max_k\ p_k$$
+$$f_\theta : \mathbb{R}^{3 \times 224 \times 224} \to \Delta^{2} = \Big\lbrace  p \in [0,1]^3 : \textstyle\sum_k p_k = 1 \Big\rbrace , \qquad \hat{y} = \arg\max_k\ p_k$$
 
 | Modelo | Qué hace con X | Parámetros aprendidos |
 |---|---|---|
@@ -44,7 +44,7 @@ $$(W * x)_{o,i,j} = \sum_{c} \sum_{u=0}^{k-1} \sum_{v=0}^{k-1} W_{o,c,u,v}\ x_{c
 
 **Normalización por lotes (BatchNorm).** Estandariza cada canal con la media $\mu_B$ y la varianza $\sigma_B^2$ del lote, y luego reescala con dos parámetros aprendidos $\gamma$ y $\beta$:
 
-$$\hat{h} = \gamma\, \frac{h - \mu_B}{\sqrt{\sigma_B^2 + \epsilon}} + \beta$$
+$$\hat{h} = \gamma\thinspace  \frac{h - \mu_B}{\sqrt{\sigma_B^2 + \epsilon}} + \beta$$
 
 **Activación** (no linealidad, figura 1): la ResNet-50 usa $\text{ReLU}(z) = \max(0, z)$ y YOLOv8 usa $\text{SiLU}(z) = z \cdot \sigma(z)$.
 
@@ -56,7 +56,7 @@ $$h^{(l+1)} = \text{ReLU}\big(\mathcal{F}(h^{(l)};\ W^{(l)}) + h^{(l)}\big)$$
 
 **Promedio global y capa final.** El mapa de características final se promedia por canal. Queda un vector $\phi(x)$ (2.048 valores en la ResNet-50, 1.280 en YOLOv8), que pasa por *dropout* ($p = 0{,}3$: durante el entrenamiento se apaga al azar el 30 % de los valores) y por una capa lineal:
 
-$$\phi(x) = \frac{1}{HW}\sum_{i,j} h^{(L)}_{:,i,j}, \qquad z = W\,\phi(x) + b \in \mathbb{R}^3$$
+$$\phi(x) = \frac{1}{HW}\sum_{i,j} h^{(L)}_{:,i,j}, \qquad z = W\thinspace \phi(x) + b \in \mathbb{R}^3$$
 
 En la ResNet-50 esta capa tiene $2.048 \times 3 + 3 = 6.147$ parámetros.
 
@@ -77,7 +77,7 @@ $$\ell(x_i, y_i) = -\sum_{k=1}^{3} q_{ik} \log p_{ik}, \qquad J(\theta) = \frac{
 - **YOLOv8s-cls:** $q = \mathbf{y}$ (one-hot), así que $\ell = -\log p_{y}$. Si la red da $p_y = 0{,}01$ a la clase correcta, la pérdida es 4,6; si da 0,99, es 0,01. Penaliza fuerte la **seguridad equivocada** (figura 2).
 - **ResNet-50, con suavizado de etiquetas** ($\varepsilon = 0{,}1$): en lugar de exigir probabilidad 1 a la clase real, el objetivo reparte un poco de masa entre las demás:
 
-$$q_k = (1-\varepsilon)\,\mathbf{y}_k + \frac{\varepsilon}{K} \quad\Rightarrow\quad q = (0{,}933;\ 0{,}033;\ 0{,}033)$$
+$$q_k = (1-\varepsilon)\thinspace \mathbf{y}_k + \frac{\varepsilon}{K} \quad\Rightarrow\quad q = (0{,}933;\ 0{,}033;\ 0{,}033)$$
 
   Así la red no puede volverse arbitrariamente segura, lo que reduce el sobreajuste. El costo mínimo posible ya no es 0 sino la entropía de $q$, $H(q) = 0{,}291$. Ese es el piso al que se acerca la pérdida de train (0,305 en la época 6, figura 2).
 
@@ -86,17 +86,17 @@ $$q_k = (1-\varepsilon)\,\mathbf{y}_k + \frac{\varepsilon}{K} \quad\Rightarrow\q
 ![Función de costo](figuras/02_funcion_costo.png)
 
 ### 2.4 Optimización: descenso del gradiente con AdamW
-**Descenso del gradiente por lotes.** En cada paso se toma un lote de $B = 64$ imágenes y se mueve cada parámetro en la dirección opuesta al gradiente del costo, como la regla $\theta_j := \theta_j - \alpha\, \partial J / \partial \theta_j$ de la semana 9:
+**Descenso del gradiente por lotes.** En cada paso se toma un lote de $B = 64$ imágenes y se mueve cada parámetro en la dirección opuesta al gradiente del costo, como la regla $\theta_j := \theta_j - \alpha\thinspace  \partial J / \partial \theta_j$ de la semana 9:
 
 $$g_t = \nabla_\theta \frac{1}{B}\sum_{i \in \text{lote}} \ell(x_i, y_i)$$
 
 El gradiente de cada peso se calcula con la regla de la cadena desde la salida hacia la entrada (retropropagación).
 
-**AdamW.** Mantiene un promedio móvil del gradiente ($m_t$, el "impulso") y de su cuadrado ($v_t$, la escala). Con eso cada parámetro avanza con un paso adaptado a su propia escala. El término $\lambda\,\theta$ (*weight decay*) encoge los pesos hacia 0, y es la regularización L2:
+**AdamW.** Mantiene un promedio móvil del gradiente ($m_t$, el "impulso") y de su cuadrado ($v_t$, la escala). Con eso cada parámetro avanza con un paso adaptado a su propia escala. El término $\lambda\thinspace \theta$ (*weight decay*) encoge los pesos hacia 0, y es la regularización L2:
 
-$$m_t = \beta_1 m_{t-1} + (1-\beta_1)\, g_t, \qquad v_t = \beta_2 v_{t-1} + (1-\beta_2)\, g_t^2$$
+$$m_t = \beta_1 m_{t-1} + (1-\beta_1)\thinspace  g_t, \qquad v_t = \beta_2 v_{t-1} + (1-\beta_2)\thinspace  g_t^2$$
 
-$$\hat{m}_t = \frac{m_t}{1-\beta_1^t}, \quad \hat{v}_t = \frac{v_t}{1-\beta_2^t}, \qquad \theta_t = \theta_{t-1} - \alpha_t \left( \frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \epsilon} + \lambda\, \theta_{t-1} \right)$$
+$$\hat{m}_t = \frac{m_t}{1-\beta_1^t}, \quad \hat{v}_t = \frac{v_t}{1-\beta_2^t}, \qquad \theta_t = \theta_{t-1} - \alpha_t \left( \frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \epsilon} + \lambda\thinspace  \theta_{t-1} \right)$$
 
 Valores: $\beta_1 = 0{,}9$ en la ResNet-50 y $0{,}937$ en YOLOv8 (valor por defecto de ultralytics), $\beta_2 = 0{,}999$, $\epsilon = 10^{-8}$, $\lambda = 0{,}01$. Ultralytics no aplica $\lambda$ a los sesgos ni a las capas de normalización.
 
@@ -140,16 +140,16 @@ $$s_j = \frac{\phi_j(x) - \mu_j^{\text{train}}}{\sigma_j^{\text{train}}}$$
 
 **Análisis de componentes principales (PCA).** Se busca la base de direcciones ortogonales en la que los datos de train varían más. Son los vectores propios de la matriz de covarianza, y cada imagen se proyecta sobre los $k = 256$ primeros:
 
-$$\Sigma = \frac{1}{n-1}\, S^\top S = V \Lambda V^\top, \qquad u = V_k^\top s \in \mathbb{R}^{256}, \qquad \text{varianza explicada} = \frac{\sum_{j=1}^{k}\lambda_j}{\sum_{j=1}^{2048}\lambda_j}$$
+$$\Sigma = \frac{1}{n-1}\thinspace  S^\top S = V \Lambda V^\top, \qquad u = V_k^\top s \in \mathbb{R}^{256}, \qquad \text{varianza explicada} = \frac{\sum_{j=1}^{k}\lambda_j}{\sum_{j=1}^{2048}\lambda_j}$$
 
 Con las características ajustadas, **256 componentes explican el 80,0 % de la varianza** (las 2 primeras ya el 38 %). Con las de ImageNet sin ajustar, solo el 58,7 % (figura 5). Las características ajustadas están más concentradas en pocas direcciones, las que separan las clases.
 
 ![Varianza explicada por el PCA](figuras/05_pca_varianza.png)
 
 ### 3.2 Modelo 3: máquina de vectores de soporte (SVM) con kernel RBF
-**Idea.** Entre todas las fronteras que separan dos clases, el SVM elige la de **máximo margen**: la que queda más lejos de los ejemplos más cercanos de cada lado. Esos ejemplos se llaman vectores de soporte. Para dos clases, $y_i \in \{-1, +1\}$, con margen blando:
+**Idea.** Entre todas las fronteras que separan dos clases, el SVM elige la de **máximo margen**: la que queda más lejos de los ejemplos más cercanos de cada lado. Esos ejemplos se llaman vectores de soporte. Para dos clases, $y_i \in \lbrace -1, +1\rbrace $, con margen blando:
 
-$$\min_{w,\,b,\,\xi}\ \ \frac{1}{2}\lVert w \rVert^2 + C \sum_{i=1}^{n} \xi_i \quad \text{sujeto a} \quad y_i\big(w^\top \varphi(u_i) + b\big) \ge 1 - \xi_i,\quad \xi_i \ge 0$$
+$$\min_{w,\thinspace b,\thinspace \xi}\ \ \frac{1}{2}\lVert w \rVert^2 + C \sum_{i=1}^{n} \xi_i \quad \text{sujeto a} \quad y_i\big(w^\top \varphi(u_i) + b\big) \ge 1 - \xi_i,\quad \xi_i \ge 0$$
 
 - $\frac{1}{2}\lVert w\rVert^2$: minimizarlo maximiza el ancho del margen, $2 / \lVert w \rVert$.
 - $\xi_i$: holgura que permite que algunas imágenes queden dentro del margen o mal clasificadas.
@@ -159,11 +159,11 @@ Es equivalente a minimizar la **pérdida bisagra** (*hinge*): $\frac{1}{2}\lVert
 
 **Kernel RBF.** Las clases no se separan con un hiperplano en el espacio original. El SVM resuelve el problema dual, en el que los datos solo aparecen como similitudes $K(u_i, u_j)$; así trabaja implícitamente en un espacio de dimensión infinita (el "truco del kernel"):
 
-$$K(u, v) = \exp\!\big(-\gamma\,\lVert u - v \rVert^2\big), \qquad \gamma = \frac{1}{d \cdot \operatorname{Var}(U)} = 0{,}00061\ \ (\texttt{gamma="scale"},\ d = 256)$$
+$$K(u, v) = \exp\big(-\gamma\thinspace \lVert u - v \rVert^2\big), \qquad \gamma = \frac{1}{d \cdot \mathrm{Var}(U)} = 0{,}00061\ \ (\texttt{gamma="scale"},\ d = 256)$$
 
-$$\max_{\alpha}\ \sum_i \alpha_i - \frac{1}{2}\sum_i\sum_j \alpha_i\alpha_j\, y_i y_j\, K(u_i, u_j) \quad \text{s.a.}\ \ 0 \le \alpha_i \le C,\ \ \sum_i \alpha_i y_i = 0$$
+$$\max_{\alpha}\ \sum_i \alpha_i - \frac{1}{2}\sum_i\sum_j \alpha_i\alpha_j\thinspace  y_i y_j\thinspace  K(u_i, u_j) \quad \text{s.a.}\ \ 0 \le \alpha_i \le C,\ \ \sum_i \alpha_i y_i = 0$$
 
-$$f(u) = \sum_{i \in \text{SV}} \alpha_i\, y_i\, K(u_i, u) + b$$
+$$f(u) = \sum_{i \in \text{SV}} \alpha_i\thinspace  y_i\thinspace  K(u_i, u) + b$$
 
 Solo los vectores de soporte ($\alpha_i > 0$) intervienen en la predicción. Con $C = 0{,}1$, elegido en validación (figura 8), el modelo usa **1.684 vectores de soporte de 24.501 imágenes de train (6,9 %)**: 320 de Degeneración, 660 de Normal y 704 de Protrusión.
 
@@ -178,7 +178,7 @@ La figura 6, a la izquierda, es una **ilustración en 2 dimensiones** (las 2 pri
 ### 3.3 Modelo 4: Random Forest
 **Árbol de decisión.** Hace preguntas del tipo "¿$u_j \le t$?" y divide las imágenes en dos grupos. En cada nodo elige la variable $j$ y el umbral $t$ que más reducen la **impureza de Gini** (semana 11):
 
-$$G(\text{nodo}) = 1 - \sum_{k=1}^{3} p_k^2, \qquad \Delta G = G(\text{padre}) - \frac{n_L}{n}\,G(L) - \frac{n_R}{n}\,G(R)$$
+$$G(\text{nodo}) = 1 - \sum_{k=1}^{3} p_k^2, \qquad \Delta G = G(\text{padre}) - \frac{n_L}{n}\thinspace G(L) - \frac{n_R}{n}\thinspace G(R)$$
 
 $G = 0$ si el nodo tiene una sola clase (puro). El máximo es $1 - 1/K$ si las clases están mezcladas en partes iguales: 0,5 con 2 clases, 0,667 con 3. Ejemplo de la clase: 6 compran y 4 no ($G = 1 - 0{,}6^2 - 0{,}4^2 = 0{,}48$). Tras dividir en un grupo (5, 0) con $G = 0$ y otro (1, 4) con $G = 0{,}32$, la impureza ponderada baja a $0{,}5 \cdot 0 + 0{,}5 \cdot 0{,}32 = 0{,}16$.
 
@@ -220,7 +220,7 @@ Para cada clase $k$, tratada como "positiva" frente a las demás: TP = predijo $
 
 $$\text{Exactitud} = \frac{\sum_k \text{TP}_k}{N}, \qquad \text{Precisión}_k = \frac{\text{TP}_k}{\text{TP}_k + \text{FP}_k}, \qquad \text{Recall}_k = \frac{\text{TP}_k}{\text{TP}_k + \text{FN}_k}$$
 
-$$F1_k = 2\,\frac{\text{Precisión}_k \cdot \text{Recall}_k}{\text{Precisión}_k + \text{Recall}_k}, \qquad F1_{\text{macro}} = \frac{1}{K}\sum_k F1_k, \qquad \text{Exactitud balanceada} = \frac{1}{K}\sum_k \text{Recall}_k$$
+$$F1_k = 2\thinspace \frac{\text{Precisión}_k \cdot \text{Recall}_k}{\text{Precisión}_k + \text{Recall}_k}, \qquad F1_{\text{macro}} = \frac{1}{K}\sum_k F1_k, \qquad \text{Exactitud balanceada} = \frac{1}{K}\sum_k \text{Recall}_k$$
 
 **Ejemplo con el modelo 2 en el test de originales** (filas = real, columnas = predicha):
 

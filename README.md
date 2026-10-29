@@ -25,6 +25,12 @@ El flujo del proyecto es: recorte del ROI de cada disco, construccion de un data
 
 Lumbar Spine MRI Dataset: https://data.mendeley.com/datasets/k57fr854j2/2
 
+## DATASET CONSTRUIDO (35.007 IMAGENES)
+
+El dataset final con el que se entrenaron los 4 modelos esta en Google Drive, como un solo archivo `DeepSpine_Dataset_35k.zip` (405 MB): https://drive.google.com/drive/folders/1ZbTE1gb6zv7F2qEBmwRXzHFveLyRrl4I?usp=drive_link
+
+Al descomprimirlo quedan las carpetas `train/`, `val/` y `test/`, cada una con una subcarpeta por clase. Es el contenido que se usa en `data/processed/` (las imagenes no se suben al repo). Para entrenar, se descomprime donde indique `DEEPSPINE_DATA` (por defecto `~/deepspine_data/`); ver [Uso](#uso). Su manifiesto (`data/processed/dataset_35k/manifest_35k.csv`) permite verificar que el zip descargado es el mismo: los scripts de entrenamiento lo comprueban al cargar el dataset.
+
 ## Integrantes
 
 | Nombre | Rol / Aporte |
@@ -116,7 +122,7 @@ Reglas que cumplen todos los scripts:
 | **Pesos de los 4 modelos** (`yolov8s_cls.pt`, `resnet50.pt`, `svm.joblib`, `random_forest.joblib`, ~121 MB en total) | **GitHub Release** [`modelos-v1.0`](https://github.com/JulianSilvaMorales/Vision_Artificial/releases/tag/modelos-v1.0); se descargan en `models/` con `python scripts/descargar_modelos.py` | No: van en la Release para no gastar la cuota de Git LFS |
 | Casos de demostracion (45 originales de test) y sus predicciones registradas | `data/demo/` | Si |
 | Embeddings, checkpoints por epoca y experimentos descartados | `~/deepspine_runs/` de quien entrena | No: se regeneran con los scripts |
-| Imagenes del dataset de 35k | Enlace de Drive / `scripts/build_dataset.py` | No |
+| Imagenes del dataset de 35k (`DeepSpine_Dataset_35k.zip`) | [Google Drive](https://drive.google.com/drive/folders/1ZbTE1gb6zv7F2qEBmwRXzHFveLyRrl4I?usp=drive_link) / `scripts/build_dataset.py` | No |
 
 ### Proceso seguido
 1. **Entorno:** el entrenamiento se hizo en Ubuntu 24.04 (WSL2) con la GPU local, en lugar de Colab, para evitar desconexiones. Se uso PyTorch porque YOLOv8 (ultralytics) solo existe para PyTorch.
@@ -283,7 +289,7 @@ Nota: esta seccion se debe actualizar a medida que el proyecto avance, para que 
 
 Este proyecto usa Git LFS para versionar archivos pesados (imagenes, CSV, checkpoints de modelos). Los tipos de archivo rastreados por LFS estan definidos en `.gitattributes`. Cualquiera que clone el repo debe tener Git LFS instalado (`git lfs install`) antes de descargar los archivos de `data/` o `models/`.
 
-Pendiente de definir: como se distribuye el dataset de 35.007 imagenes (dentro del repo con LFS, como un solo archivo comprimido, o mediante un enlace externo), segun la cuota de LFS disponible. Mientras tanto, `data/processed/` guarda las etiquetas y manifiestos, y `scripts/build_dataset.py` regenera las imagenes.
+El dataset de 35.007 imagenes no se sube al repo, para no agotar la cuota de LFS: se distribuye como `DeepSpine_Dataset_35k.zip` en [Google Drive](https://drive.google.com/drive/folders/1ZbTE1gb6zv7F2qEBmwRXzHFveLyRrl4I?usp=drive_link). `data/processed/` guarda las etiquetas y manifiestos, y `scripts/build_dataset.py` regenera las imagenes. Los pesos de los 4 modelos tampoco van en LFS: estan en el GitHub Release `modelos-v1.0`.
 
 ## Cambios en archivos de configuracion
 
@@ -323,7 +329,7 @@ python scripts/build_dataset.py --continuar           # reanuda si se interrumpi
 
 La ruta base se define con la variable de entorno `DEEPSPINE_BASE` (por defecto, la carpeta actual). El script espera en esa carpeta `t2_disc_roi_patches_v2_ext/` (ROI) y `DeepSpine_Dataset_Etiquetado/etiquetas_revisadas.csv`, y escribe `DeepSpine_Dataset_35k/`.
 
-**Entrenar los 4 modelos** (Linux o WSL2 con GPU NVIDIA; el dataset descomprimido en `~/deepspine_data/` con `train/`, `val/` y `test/`, o en la ruta de la variable `DEEPSPINE_DATA`):
+**Entrenar los 4 modelos** (Linux o WSL2 con GPU NVIDIA; el dataset [`DeepSpine_Dataset_35k.zip` de Google Drive](https://drive.google.com/drive/folders/1ZbTE1gb6zv7F2qEBmwRXzHFveLyRrl4I?usp=drive_link) descomprimido en `~/deepspine_data/` con `train/`, `val/` y `test/`, o en la ruta de la variable `DEEPSPINE_DATA`):
 
 ```
 python scripts/entrenamiento/01_yolov8s_cls.py                          # modelo 1
