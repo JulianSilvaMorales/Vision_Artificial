@@ -8,7 +8,7 @@ Resultados del entrenamiento y la evaluación de los 4 modelos (Hito 2). Los gen
 - **Dos juegos de cifras:**
   - `test_orig`: las 768 imágenes originales de test, en proporción natural (42 Degeneración, 164 Normal, 562 Protrusión).
   - `test_completo`: las 5.253 imágenes de test, balanceadas, con copias aumentadas.
-- **Métricas:** exactitud, precisión, recall y F1 (macro), exactitud balanceada, ROC-AUC macro (uno contra el resto) y pérdida logarítmica. El SVM no da probabilidades, así que no tiene pérdida logarítmica.
+- **Métricas:** exactitud, precisión, recall y F1 (macro), exactitud balanceada, ROC-AUC macro (uno contra el resto), pérdida logarítmica y MSE/RMSE (puntaje de Brier: error al cuadrado entre las probabilidades y la etiqueta en one-hot). El SVM no da probabilidades, así que no tiene pérdida logarítmica ni MSE. El registro de desempeño Train/Test está en `docs/modelo_matematico/` (sección 4.4).
 
 ## Resultados en test de originales (768 imágenes)
 
