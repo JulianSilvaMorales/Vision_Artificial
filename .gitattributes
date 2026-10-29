@@ -12,3 +12,6 @@
 *.csv filter=lfs diff=lfs merge=lfs -text
 *.h5 filter=lfs diff=lfs merge=lfs -text
 *.pt filter=lfs diff=lfs merge=lfs -text
+# Finales de linea de los scripts de arranque (para que funcionen al clonar en cualquier sistema)
+*.sh text eol=lf
+*.bat text eol=crlf
