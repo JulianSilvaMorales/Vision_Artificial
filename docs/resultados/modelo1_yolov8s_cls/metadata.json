@@ -1,0 +1,37 @@
+{
+  "modelo": "1 · YOLOv8s-cls",
+  "fecha": "2026-10-29T10:21:56",
+  "semilla": 42,
+  "clases": [
+    "Degeneracion_Discal",
+    "Normal",
+    "Protrusion"
+  ],
+  "config": {
+    "base": "yolov8s-cls.pt (ImageNet)",
+    "epocas": 15,
+    "paciencia": 4,
+    "lr0": 0.0005,
+    "lrf": 0.1,
+    "wd": 0.01,
+    "congelar": 4,
+    "dropout": 0.3,
+    "batch": 64,
+    "workers": 8,
+    "cos_lr": true,
+    "warmup_epochs": 1.0,
+    "imgsz": 224,
+    "aumento_en_linea": "ninguno (solo hsv_v=0.05)",
+    "epocas_corridas": 6,
+    "criterio_best": "exactitud top-1 en val completo (balanceado)"
+  },
+  "versiones": {
+    "python": "3.12.3",
+    "torch": "2.15.0+cu132",
+    "torchvision": "0.29.2+cu132",
+    "ultralytics": "8.4.192",
+    "sklearn": "1.9.1",
+    "numpy": "2.5.4"
+  },
+  "seleccion": "hiperparametros y epoca elegidos con validacion; el test se evalua una sola vez al final"
+}
