@@ -113,7 +113,8 @@ Reglas que cumplen todos los scripts:
 | Modelo matematico (ecuaciones, graficos y valores) | `docs/modelo_matematico/` | Si |
 | Codigo de entrenamiento, evaluacion e inferencia | `scripts/entrenamiento/` y `src/` | Si |
 | Descripcion y hashes SHA-256 de los pesos | `models/README.md` | Si |
-| **Pesos de los 4 modelos** (`yolov8s_cls.pt`, `resnet50.pt`, `svm.joblib`, `random_forest.joblib`, ~121 MB en total) | **GitHub Release** del repositorio; se descargan en `models/` | No: van en la Release para no gastar la cuota de Git LFS |
+| **Pesos de los 4 modelos** (`yolov8s_cls.pt`, `resnet50.pt`, `svm.joblib`, `random_forest.joblib`, ~121 MB en total) | **GitHub Release** [`modelos-v1.0`](https://github.com/JulianSilvaMorales/Vision_Artificial/releases/tag/modelos-v1.0); se descargan en `models/` con `python scripts/descargar_modelos.py` | No: van en la Release para no gastar la cuota de Git LFS |
+| Casos de demostracion (45 originales de test) y sus predicciones registradas | `data/demo/` | Si |
 | Embeddings, checkpoints por epoca y experimentos descartados | `~/deepspine_runs/` de quien entrena | No: se regeneran con los scripts |
 | Imagenes del dataset de 35k | Enlace de Drive / `scripts/build_dataset.py` | No |
 
@@ -123,6 +124,20 @@ Reglas que cumplen todos los scripts:
 3. **Primera version:** YOLO y ResNet-50 quedaron en 87,8 % de exactitud sobre los originales de test. SVM y Random Forest sobre embeddings de ImageNet sin ajustar quedaron en 80 % y 75 %.
 4. **Ajuste con validacion** para intentar llegar al 89 %: varias semillas, regularizacion de la ResNet (suavizado de etiquetas y aumento en linea), ensambles y correccion por la proporcion de clases. Se adopto la ResNet regularizada (mejor F1 en validacion). SVM y Random Forest pasaron a usar las caracteristicas de esa ResNet; su F1 en validacion subio de 0,65 a 0,80 (SVM) y de 0,60 a 0,79 (Random Forest). La correccion por proporcion se descarto porque hundia la deteccion de Degeneracion.
 5. **Evaluacion final:** los 4 modelos se evaluaron una sola vez en test, con las metricas de la tabla de [Resultados](#resultados).
+
+## Demo (MVP)
+
+> **Temporal:** MVP para la entrega del Hito 2. La webapp formal la desarrolla Juan Manuel Tengono sobre la misma API; cuando exista, esta seccion se actualiza.
+
+Aplicacion local (backend FastAPI + pagina web) que consume los 4 modelos y demuestra la **simulacion de resultados** y la **trazabilidad**: cada prediccion se puede seguir desde la imagen (paciente, nivel, etiqueta real) por cada paso de los modelos, y se comprueba que reproduce la evaluacion oficial. Usa 45 casos de test incluidos en el repo, asi que no necesita el dataset de 35k.
+
+```
+pip install -r webapp/backend/requirements.txt
+python scripts/descargar_modelos.py            # pesos del Release modelos-v1.0, con verificacion SHA-256
+uvicorn webapp.backend.main:app --port 8000    # abrir http://localhost:8000
+```
+
+Instrucciones completas, pestanas, API y como se garantiza la trazabilidad: [`webapp/README.md`](webapp/README.md).
 
 ## Arquitectura del proyecto
 
@@ -161,6 +176,7 @@ Vision_Artificial/
 ├── data/                     # Datos del proyecto
 │   ├── raw/                   # Datos originales, sin modificar (solo enlace al dataset de Mendeley)
 │   ├── processed/              # Dataset final de 35.007 imagenes (o su enlace), manifiestos y etiquetas
+│   ├── demo/                    # 45 casos de test para el MVP (imagenes + casos.csv)
 │   └── external/                # Datasets de terceros / descargas externas
 │
 ├── src/                        # Codigo fuente reutilizable (paquete Python)
@@ -176,21 +192,25 @@ Vision_Artificial/
 │   ├── etiquetado/                # Semilla, split por paciente y registro de etiquetas
 │   ├── guias_visuales/             # Figuras de la guia de anotacion
 │   ├── entrenamiento/              # Entrenamiento, evaluacion y comparacion de los 4 modelos
+│   ├── demo/                       # Seleccion de los casos de demostracion del MVP
+│   ├── descargar_modelos.py        # Descarga los 4 pesos del GitHub Release y verifica su SHA-256
 │   └── build_dataset.py            # Dataset final de 35.007 imagenes
 │
 ├── models/                     # Pesos del pipeline de datos; los 4 modelos finales se descargan del GitHub Release
 │
 ├── notebooks/                  # Notebooks (Colab): preetiquetado, entrenamiento de los 4 modelos y comparacion
 │
-├── webapp/
-│   ├── backend/                 # API que sirve el modelo (arquitectura en capas)
-│   │   ├── api/routes/            # Endpoints (ej: POST /predict)
+├── webapp/                     # MVP de demostracion (ver webapp/README.md); base de la webapp formal
+│   ├── backend/                 # API FastAPI que sirve los 4 modelos (arquitectura en capas)
+│   │   ├── main.py                # App; sirve la API, /resultados y la pagina del MVP
+│   │   ├── api/routes/            # Endpoints (salud, modelos, casos, predecir, simulacion)
 │   │   ├── core/                   # Configuracion, variables de entorno
 │   │   ├── services/                # Logica de negocio, orquesta la prediccion
 │   │   ├── schemas/                  # Validacion de datos de entrada/salida
 │   │   └── utils/                     # Helpers propios del backend
 │   │
-│   └── frontend/                # Interfaz web (React)
+│   └── frontend/                # Interfaz web (React, pendiente)
+│       ├── mvp/                   # Pagina temporal del MVP (HTML, CSS y JS sin dependencias)
 │       ├── public/                # Archivos estaticos (favicon, index.html)
 │       └── src/
 │           ├── assets/              # Imagenes/iconos/estilos de la app
@@ -216,6 +236,7 @@ Contenido actual y previsto de `scripts/` y `notebooks/`:
 | `notebooks/00_entrenamiento_detector_discos.ipynb` | En el repo | Entrenamiento del detector de discos (YOLO) usado para recortar los ROI |
 | `notebooks/01_preetiquetado_semilla_v2.ipynb` | En el repo | Modelo semilla (YOLOv8-cls) para preetiquetar los ROI; la revision humana posterior produce `etiquetas_revisadas.csv` |
 | `scripts/entrenamiento/` | En el repo | Entrenamiento y evaluacion de los cuatro modelos y su comparacion (`01_yolov8s_cls.py` a `05_comparar_modelos.py`); se ejecutan desde la terminal en Ubuntu (WSL2) en lugar de cuadernos |
+| `scripts/demo/`, `scripts/descargar_modelos.py` | En el repo | Seleccion de los 45 casos de demostracion y descarga verificada de los pesos del Release |
 | `src/` | En el repo | Codigo comun: indice del dataset y verificacion de fuga (`data/`), ResNet-50 (`models/`), evaluacion (`training/`), metricas y graficas (`utils/`) y prediccion para la app (`inference/predictor.py`) |
 
 Los scripts de `scripts/` se conservan tal como se usaron durante el trabajo; las rutas de entrada y salida se configuran dentro de cada uno (ver `if __name__ == "__main__"` o sus argumentos).
@@ -279,7 +300,7 @@ python scripts/entrenamiento/05_comparar_modelos.py                     # tabla 
 
 Cada script deja sus resultados en `docs/resultados/<modelo>/` y los pesos en `models/`; los checkpoints y embeddings quedan fuera del repo, en `~/deepspine_runs/` (`DEEPSPINE_RUNS`). Tiempos medidos en una RTX 3060 Ti: YOLO ~2 min, ResNet-50 ~5 min, embeddings ~35 s, modelos clasicos ~3 min (ImageNet ~10 min). En WSL2 el `pin_memory` de los DataLoader esta desactivado (`src/utils/config.py`) porque provoca errores de memoria.
 
-**Usar los modelos entrenados** (descargar los 4 archivos del GitHub Release en `models/`):
+**Usar los modelos entrenados** (primero `python scripts/descargar_modelos.py`, que baja los 4 pesos del Release a `models/`):
 
 ```python
 from src.inference.predictor import Predictor
@@ -290,7 +311,7 @@ pred.predecir_todos("roi.png")                # los 4 modelos sobre la misma ima
 
 **Notebooks:** los cuadernos 00 y 01 se ejecutan en Google Colab con GPU. Usan Roboflow: la clave se guarda como secreto de Colab con el nombre `ROBOFLOW_API_KEY`; no se escribe en el cuaderno. Las variables a ajustar (rutas, workspace y proyecto) estan en las primeras celdas.
 
-**Backend y frontend:** (pendiente; se completa cuando la aplicacion este implementada).
+**Backend y frontend:** por ahora, el MVP de demostracion ([Demo (MVP)](#demo-mvp) y [`webapp/README.md`](webapp/README.md)). La webapp formal esta pendiente.
 
 ## Flujo de trabajo con Git
 
