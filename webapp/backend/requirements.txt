@@ -12,3 +12,5 @@ torch
 torchvision
 ultralytics
 pi-heif       # ultralytics lo instala solo si falta; se fija aqui para que la demo no dependa de internet
+pydicom
+opencv-python-headless
