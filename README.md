@@ -97,6 +97,7 @@ Reglas que cumplen todos los scripts:
 | `04_svm_random_forest.py` | StandardScaler y PCA a 256 componentes, ajustados con train. Luego prueba en validacion SVM RBF (C = 0,1 / 0,5 / 2 / 8), Random Forest de 300 arboles (profundidad 10 / 20 / sin limite), regresion logistica (C = 0,01 / 0,1 / 1) y KNN (K = 5 / 15 / 31), y se queda con el mejor de cada uno | `docs/resultados/modelo3_svm/`, `modelo4_random_forest/`, `extra_*/` (o `ablacion_imagenet_*/`), y `models/svm.joblib` y `models/random_forest.joblib`, que guardan dentro el escalador y el PCA. Elegidos: SVM C = 0,1; Random Forest profundidad 20 |
 | `05_comparar_modelos.py` | Lee los puntajes de cada modelo, calcula las mismas metricas para todos, agrega un ensamble de los 4 como extra y elige el mejor por F1 macro en validacion | `docs/resultados/comparacion/`: tablas por metrica, recall por clase, matrices de confusion lado a lado, ROC y barras. Mejor por validacion: ResNet-50 |
 | `06_figuras_modelo_matematico.py` | Genera los graficos del modelo matematico a partir de los modelos entrenados: softmax, funcion de costo, tasa de aprendizaje, curvas, PCA, SVM, Random Forest y busqueda de hiperparametros | `docs/modelo_matematico/figuras/` y `valores.json` (cada cifra citada en el documento) |
+| `07_figura_estructura.py` | Dibuja el diagrama de la estructura del sistema: los dos caminos, la parte hibrida y el ensamble. No necesita el dataset ni los modelos | `docs/modelo_matematico/figuras/09_estructura_sistema.png` |
 
 ### Codigo comun (`src/`)
 
