@@ -1,8 +1,8 @@
-# Modelo matemático de los 4 clasificadores
+# Modelo matemático de los 4 clasificadores y su ensamble
 
 Clasificación de recortes (ROI) de discos intervertebrales lumbares en RM sagital T2 en tres clases: **Degeneración discal**, **Normal** y **Protrusión**.
 
-Este documento explica, con sus ecuaciones, cómo cada uno de los 4 modelos convierte una imagen en una predicción, cómo aprende sus parámetros y cómo se evalúa. Sigue la secuencia vista en clase (semana 9): **datos → variables → modelo → predicción → error → optimización → evaluación**.
+Este documento explica, con sus ecuaciones, cómo cada uno de los 4 modelos convierte una imagen en una predicción, cómo aprende sus parámetros y cómo se evalúa. También explica la **estructura del sistema completo** (sección 3.5) y el **ensamble** que combina los 4 modelos (sección 3.6). Sigue la secuencia vista en clase (semana 9): **datos → variables → modelo → predicción → error → optimización → evaluación**.
 
 Todas las cifras salen de los modelos entrenados. Las figuras y los valores citados se generan con `scripts/entrenamiento/06_figuras_modelo_matematico.py` y quedan en [`figuras/`](figuras/) y [`valores.json`](valores.json). Las métricas completas están en [`docs/resultados/`](../resultados/README.md).
 
@@ -205,6 +205,72 @@ Con características de ImageNet sin ajustar, el SVM baja de 88,4 % a 77,6 % y e
 
 ![Búsqueda de hiperparámetros](figuras/08_busqueda_hiperparametros.png)
 
+### 3.5 Estructura del sistema: arquitectura híbrida
+
+El sistema tiene **dos caminos**. YOLOv8s-cls va por el suyo, independiente. La ResNet-50 es la **base compartida** de los otros tres modelos: sus características $\phi(x)$ alimentan su propia capa final (modelo 2) y, después de estandarizarlas y reducirlas, al SVM (modelo 3) y al Random Forest (modelo 4). Unir una red profunda que extrae características con un clasificador clásico que decide es lo que se llama **arquitectura híbrida**.
+
+![Estructura del sistema](figuras/09_estructura_sistema.png)
+
+**Las 4 funciones.** Sea $g_Y$ la red YOLOv8s-cls hasta sus logits, $g_R$ la ResNet-50 sin su capa final y $\phi(x) = g_R(x)$. Cada modelo es una composición de funciones:
+
+$$p_1(x) = \text{softmax}\big(g_Y(x)\big)$$
+
+$$p_2(x) = \text{softmax}\big(W\thinspace \phi(x) + b\big)$$
+
+$$u(x) = V_k^\top\thinspace D^{-1}\big(\phi(x) - \mu\big), \qquad D = \text{diag}(\sigma_1, \dots, \sigma_{2048})$$
+
+$$p_3(x) = \text{softmax}\big(\text{SVM}(u(x))\big), \qquad p_4(x) = \frac{1}{T}\sum_{t=1}^{T} p_t\big(u(x)\big)$$
+
+Las tres últimas dependen de la misma $\phi(x)$. Por eso, en la aplicación la ResNet-50 se ejecuta una sola vez por imagen. La softmax de $p_3$ solo lleva los puntajes del SVM a la misma escala de los demás: no son probabilidades calibradas.
+
+**Orden de entrenamiento.** Cada etapa usa solo lo aprendido en las anteriores, y nada se ajusta con el test:
+
+| Paso | Qué se aprende | Con qué datos | Qué queda fijo |
+|---|---|---|---|
+| 1 | Pesos de YOLOv8s-cls | train; época elegida con validación | — |
+| 2 | Pesos de la ResNet-50, incluidos $W$ y $b$ | train; época elegida con validación | — |
+| 3 | $\mu$, $D$ y $V_k$ (escalador y PCA) | características de train | La ResNet-50 |
+| 4 | SVM y Random Forest | $u$ de train; hiperparámetros elegidos con validación | ResNet-50, escalador y PCA |
+
+**Por qué es híbrida y no un ensamble.** En esta estructura un modelo le pasa sus **características** a otro, y cada uno sigue dando su propia predicción. Un ensamble, en cambio, combina las **respuestas finales** de varios modelos. Esa combinación es la sección siguiente.
+
+### 3.6 Ensamble por promedio
+
+**Idea.** Es la misma de la semana 11: consultar a varios modelos reduce la dependencia de una sola decisión. Cada modelo entrega 3 puntajes para la imagen; se promedian por clase y gana la clase con el mayor promedio (**votación suave**). Con $M = 4$ modelos:
+
+$$P_{\text{ens}}(k \mid x) = \frac{1}{M}\sum_{m=1}^{M} p_m(k \mid x), \qquad \hat{y}_{\text{ens}} = \arg\max_k\ P_{\text{ens}}(k \mid x)$$
+
+El ensamble **no se entrena**: todos los modelos pesan igual ($1/4$) y no tiene parámetros que aprender. Se calcula después, con las salidas de los 4 modelos ya entrenados. Por eso es un **extra** y no un quinto modelo.
+
+**Ejemplo real** (caso 3 de la demo: paciente 0319, L1-L2, etiqueta real Degeneración):
+
+| Modelo | Degeneración | Normal | Protrusión | Predicción |
+|---|---|---|---|---|
+| 1. YOLOv8s-cls | 0,109 | 0,871 | 0,020 | Normal (falla) |
+| 2. ResNet-50 | 0,936 | 0,025 | 0,039 | Degeneración |
+| 3. SVM (con softmax) | 0,746 | 0,064 | 0,190 | Degeneración |
+| 4. Random Forest | 0,866 | 0,050 | 0,083 | Degeneración |
+| **Ensamble (promedio)** | **0,664** | 0,253 | 0,083 | **Degeneración** |
+
+Por ejemplo, $P_{\text{ens}}(\text{Degeneración}) = (0{,}109 + 0{,}936 + 0{,}746 + 0{,}866) / 4 = 0{,}664$. Los otros tres modelos corrigen el error de YOLO.
+
+**Por qué puede ayudar, y su límite.** Si cada modelo tiene una varianza de error $\sigma^2$ y la correlación entre modelos es $\rho$, la varianza del promedio de $M$ modelos es:
+
+$$\text{Var}\left(\frac{1}{M}\sum_{m=1}^{M} p_m\right) = \rho\thinspace \sigma^2 + \frac{1-\rho}{M}\thinspace \sigma^2$$
+
+Si los modelos fueran independientes ($\rho = 0$), la varianza se dividiría entre 4. Si fueran idénticos ($\rho = 1$), promediar no serviría de nada. Aquí los modelos 2, 3 y 4 comparten $\phi(x)$, así que se espera una correlación alta y una mejora limitada.
+
+**Resultados** (test de originales; detalle en las secciones 4.3 y 4.4):
+
+| Métrica | Mejor modelo individual | Ensamble |
+|---|---|---|
+| Exactitud | 0,889 (ResNet-50) | 0,889 |
+| F1 macro | 0,769 (ResNet-50) | 0,745 |
+| ROC-AUC macro | 0,942 (Random Forest) | **0,947** |
+| MSE (Brier) | 0,173 (ResNet-50) | **0,164** |
+
+El ensamble empata en exactitud y da las probabilidades más confiables (mejor ROC-AUC y MSE), pero detecta menos casos de Degeneración: 17 de 42, frente a 21 de la ResNet-50. En validación, el criterio acordado, su F1 macro es 0,822 frente a 0,824 de la ResNet-50. Por eso **la ResNet-50 sigue siendo el modelo principal** y el ensamble se reporta como resultado adicional.
+
 ---
 
 ## 4. Evaluación
@@ -273,6 +339,7 @@ A diferencia de la exactitud, el MSE también mide si la **confianza** del model
 | **2. ResNet-50** (mejor por validación) | **0,889** | **0,769** | 0,919 | 0,50 / 0,81 / 0,94 |
 | 3. SVM (RBF) | 0,884 | 0,748 | 0,899 | 0,43 / 0,77 / 0,95 |
 | 4. Random Forest | 0,884 | 0,746 | 0,942 | 0,40 / 0,77 / 0,95 |
+| extra: ensamble por promedio (sección 3.6) | 0,889 | 0,745 | 0,947 | 0,40 / 0,81 / 0,95 |
 
 ![Matrices de confusión de los 4 modelos](../resultados/comparacion/matrices_confusion_test_orig.png)
 
@@ -305,10 +372,14 @@ Precision, recall y F1 son promedios *macro* de las 3 clases. **R² no aplica**:
 | | Accuracy | 0,998 | 0,884 | 0,743 |
 | | Precision / Recall | 0,994 / 0,999 | 0,810 / 0,710 | 0,784 / 0,743 |
 | | F1 / ROC-AUC | 0,996 / 1,000 | 0,746 / 0,942 | 0,731 / 0,920 |
+| **Extra: ensamble** | MSE / RMSE (Brier) | 0,031 / 0,175 | 0,164 / 0,405 | 0,334 / 0,578 |
+| | Accuracy | 0,989 | 0,889 | 0,762 |
+| | Precision / Recall | 0,978 / 0,992 | 0,782 / 0,721 | 0,794 / 0,762 |
+| | F1 / ROC-AUC | 0,985 / 1,000 | 0,745 / 0,947 | 0,752 / 0,937 |
 
 **Lectura:**
 - La distancia entre Train y Test es la que se vio en las curvas de aprendizaje (sección 2.5): **sobreajuste**. En train los modelos casi no se equivocan (MSE de 0,01 a 0,05); en test el MSE sube a ~0,17–0,20.
-- Por MSE, la ResNet-50 y el Random Forest son los mejor calibrados en test (0,173 y 0,174).
+- Por MSE, el ensamble es el mejor en test (0,164), seguido de la ResNet-50 y el Random Forest (0,173 y 0,174).
 - Todas las cifras salen de `docs/resultados/comparacion/tabla_metricas_larga.csv`, que `scripts/entrenamiento/05_comparar_modelos.py` calcula a partir de los puntajes guardados de cada modelo.
 
 ---
@@ -318,5 +389,5 @@ Precision, recall y F1 son promedios *macro* de las 3 clases. **R² no aplica**:
 - **Etiquetas con ruido:** $y$ la asignaron estudiantes, sin radiólogo y sin corte axial. El modelo aprende a reproducir esas etiquetas, no un diagnóstico.
 - **Desbalance:** el entrenamiento ve las clases balanceadas (por copias), pero en la proporción natural el 73 % es Protrusión. Probé corregir por esa proporción multiplicando $p_k$ por la frecuencia de cada clase; no mejoró la exactitud y hundió el recall de Degeneración, así que se descartó (`docs/resultados/experimentos_validacion.md`).
 - **Sobreajuste:** las redes llegan a ~97–99 % en train y ~89 % en test de originales. La regularización (dropout, weight decay, suavizado, aumento) y la parada temprana lo reducen, pero no lo eliminan.
-- **Dependencia de los modelos 3 y 4** respecto del modelo 2: comparten la representación $\phi(x)$, así que no son cuatro opiniones independientes.
+- **Dependencia de los modelos 3 y 4** respecto del modelo 2: comparten la representación $\phi(x)$, así que no son cuatro opiniones independientes. Eso limita lo que puede ganar el ensamble (sección 3.6).
 - **Herramienta académica, no diagnóstica.**
