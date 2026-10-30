@@ -5,7 +5,7 @@ from PIL import Image, UnidentifiedImageError
 
 from webapp.backend.core.config import TAMANO_MAXIMO_IMAGEN
 from webapp.backend.schemas.prediccion import Traza
-from webapp.backend.services import modelos_service, prediccion_service, validacion_service
+from webapp.backend.services import estudios_service, modelos_service, prediccion_service, validacion_service
 
 router = APIRouter(prefix="/api", tags=["prediccion"])
 
@@ -32,9 +32,17 @@ async def predecir(imagen: UploadFile = File(...)):
     """Recibe el recorte (ROI) de un disco y devuelve la prediccion de los 4 modelos con su traza.
 
     Responde 422 si la imagen no parece un ROI de disco lumbar (foto en color, imagen fuera de distribucion...). Si es un
-    corte completo de columna responde 422 con motivo `corte_completo`."""
+    corte completo de columna responde 422 con motivo `corte_completo`: usa entonces /api/predecir-corte."""
     img = await _leer_imagen(imagen)
     validacion_service.validar_formato(img)
     _exigir_modelos()
     return await run_in_threadpool(prediccion_service.predecir_imagen, img)
 
+
+@router.post("/predecir-corte")
+async def predecir_corte(imagen: UploadFile = File(...)):
+    """Recibe un corte sagital completo (PNG/JPG), detecta los 5 discos L1-S1 y los clasifica."""
+    img = await _leer_imagen(imagen)
+    validacion_service.validar_formato(img)
+    _exigir_modelos()
+    return await run_in_threadpool(estudios_service.analizar_corte_subido, img)
