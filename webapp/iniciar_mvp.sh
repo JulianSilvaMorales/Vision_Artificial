@@ -16,11 +16,13 @@ if [ ! -x "$VENV/bin/python" ]; then
   "$PY" -m venv "$VENV"
 fi
 
-if [ ! -f "$VENV/.instalado" ]; then
-  echo "[2/4] Instalando dependencias (la primera vez tarda varios minutos) ..."
+# .instalado guarda una copia de requirements.txt: si cambia (dependencias nuevas), se reinstala
+REQ=webapp/backend/requirements.txt
+if ! cmp -s "$REQ" "$VENV/.instalado"; then
+  echo "[2/4] Instalando dependencias (la primera vez, o si cambiaron, tarda varios minutos) ..."
   "$VENV/bin/python" -m pip install --upgrade pip > /dev/null
-  "$VENV/bin/python" -m pip install -r webapp/backend/requirements.txt
-  touch "$VENV/.instalado"
+  "$VENV/bin/python" -m pip install -r "$REQ"
+  cp "$REQ" "$VENV/.instalado"
 else
   echo "[2/4] Dependencias ya instaladas."
 fi
