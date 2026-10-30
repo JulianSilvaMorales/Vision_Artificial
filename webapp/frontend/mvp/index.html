@@ -21,6 +21,7 @@
   <button class="tab" data-tab="subir">2 · Subir imagen</button>
   <button class="tab" data-tab="simulacion">3 · Simulación</button>
   <button class="tab" data-tab="modelos">4 · Modelos y métricas</button>
+  <button class="tab" data-tab="estudio">5 · Estudio de resonancia</button>
 </nav>
 
 <main>
@@ -48,6 +49,7 @@
     <h2>Subir el recorte de un disco</h2>
     <p class="nota">PNG o JPG del recorte (ROI) de un disco, como los del dataset. Una imagen subida no tiene etiqueta real: se muestra solo lo que dicen los modelos.</p>
     <input type="file" id="archivo" accept="image/*" aria-label="Imagen del recorte">
+    <p class="nota">Si subes un corte completo de columna (no un recorte), se detectan y clasifican los 5 discos automáticamente. Las imágenes que no son de columna (fotos, otras partes del cuerpo) se rechazan.</p>
     <div id="subir-resultado"></div>
   </section>
 
@@ -73,6 +75,21 @@
       <figure><img src="/resultados/comparacion/roc_test_orig.png" alt="Curvas ROC"><figcaption>ROC macro · test originales</figcaption></figure>
       <figure><img src="/resultados/comparacion/barras_test.png" alt="Barras de exactitud y F1"><figcaption>Exactitud y F1 macro</figcaption></figure>
     </div>
+  </section>
+
+  <!-- 5. Estudio de resonancia -->
+  <section id="tab-estudio" class="panel">
+    <h2>Estudio de resonancia (modo radiólogo)</h2>
+    <p class="nota">Sube los archivos del resonador (<code>.IMA</code>, <code>.dcm</code> o un <code>.zip</code> con la carpeta del estudio). Se convierten a PNG con el mismo script que limpió el dataset, eliges los cortes midsagitales, se detectan y recortan los 5 discos L1-S1 y los 4 modelos predicen cada uno.</p>
+    <p class="nota alerta">Los archivos DICOM se borran del servidor apenas se convierten, y el estudio completo se elimina a los 30 minutos. Herramienta académica, no diagnóstica.</p>
+    <div class="filtros">
+      <input type="file" id="est-archivos" multiple aria-label="Archivos del estudio (.IMA, .dcm o .zip)">
+      <button id="est-subir" class="principal">Subir y convertir</button>
+      <button id="est-borrar" hidden>Borrar estudio</button>
+      <span id="est-progreso"></span>
+    </div>
+    <div id="est-ficha"></div>
+    <div id="est-resultado"></div>
   </section>
 </main>
 

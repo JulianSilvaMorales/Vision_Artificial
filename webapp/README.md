@@ -86,17 +86,35 @@ La barra superior de la página debe decir **"4 modelos cargables · CPU · comm
 | Queremos usarlo sin internet (en clase) | — | Después de la primera ejecución funciona sin conexión: los scripts no reinstalan nada, los modelos se verifican en local ("OK (ya estaba)") y la página no usa recursos externos. Probarlo antes con el wifi apagado |
 | `pip` no encuentra `torch` para tu versión de Python | Python demasiado viejo o demasiado nuevo | Usar Python 3.12 a 3.14 |
 | Windows: `OSError: [Errno 2] No such file or directory: ...torch\include\...` al instalar | El repo está en una ruta muy larga y Windows limita las rutas a 260 caracteres | Clonar en una ruta corta (por ejemplo `C:\Users\<usuario>\Documents\Vision_Artificial`) o activar las rutas largas de Windows |
+| La pestaña 5 dice *"Falta models/best_disc_detector.pt"* | El detector llegó como puntero de Git LFS | `git lfs install` y `git lfs pull` |
+| Pestaña 5: *"No se pudo convertir ningún corte a PNG"* en Windows | `cv2.imwrite` no escribe en rutas con tildes o símbolos, y la carpeta temporal del usuario las tiene | Definir `DEEPSPINE_ESTUDIOS` con una ruta simple, por ejemplo `set DEEPSPINE_ESTUDIOS=C:\deepspine_tmp` |
+| Pestaña 5: el detector halla pocos discos | Los cortes no son midsagitales, o el equipo es muy distinto al de entrenamiento | Elegir cortes del centro del volumen; ver el aviso de equipo en la pestaña |
 | Usas el mismo clon desde Windows y desde WSL | El `.venv-mvp` de un sistema no sirve en el otro | En WSL: `MVP_VENV=.venv-mvp-linux bash webapp/iniciar_mvp.sh` |
 
 Opcional: con GPU NVIDIA y PyTorch con CUDA, `DEEPSPINE_DISPOSITIVO=cuda` usa la GPU. En CPU (por defecto) las predicciones reproducen exactamente la evaluación oficial; en GPU la ResNet usa otra precisión numérica y algún caso límite puede cambiar.
+
+## Rechazo de imágenes que no son de columna
+
+Los 4 modelos siempre eligen una de las 3 clases, así que antes de predecir se filtran las imágenes subidas (`services/validacion_service.py`):
+
+1. **Formato:** se rechazan las imágenes en color, diminutas o con proporciones raras (`422`, `capa 1`).
+2. **Tipo:** casi cuadrada y de hasta 256 px = ROI; más grande o alargada = corte completo, que va al detector de discos y solo se acepta si halla al menos 3 niveles en orden (`capa 2`).
+3. **Fuera de distribución:** distancia de Mahalanobis del embedding de la ResNet-50 en el espacio PCA del SVM, contra un umbral calibrado. **Esta capa solo actúa si existe `models/umbral_rechazo.json`**; sin él la API lo indica en `pasos.validacion.capa3 = "sin_umbral"`. Se genera una vez con los ROI de validación (no están en el repo, ver `data/processed/README.md`):
+
+```
+python scripts/demo/calibrar_rechazo.py --rois <carpeta con ROI de validacion> --negativas <carpeta con unas 30 imagenes que no son discos>
+```
+
+El script informa cuántas imágenes negativas se rechazan y cuántos de los 45 casos demo se aceptan (deben ser los 45). Si cambia `svm.joblib`, hay que recalibrar: la API avisa con `umbral_obsoleto`.
 
 ## Qué muestra (pestañas)
 
 | Pestaña | Qué demuestra |
 |---|---|
 | **1 · Caso a caso** | Eliges uno de los 45 casos de test (paciente, nivel, etiqueta real) y lo pasas por los 4 modelos. Ves la clase y las probabilidades de cada uno, si acierta y si **reproduce** la predicción registrada en la evaluación oficial. Debajo, el **diagrama de trazabilidad**: la imagen original y la de 224 px, las 2.048 características de la ResNet-50, el escalador y el PCA (256 componentes), los puntajes del SVM, los votos de los 300 árboles del Random Forest y el camino independiente de YOLO, cada uno con sus valores reales y su tiempo |
-| **2 · Subir imagen** | Lo mismo con un recorte (ROI) propio; sin etiqueta real |
+| **2 · Subir imagen** | Lo mismo con un recorte (ROI) propio; sin etiqueta real. Rechaza lo que no es un disco (fotos en color, imágenes fuera de distribución). Si subes un corte completo de columna, detecta y clasifica los 5 discos |
 | **3 · Simulación** | Corre los 4 modelos sobre los 45 casos uno por uno y arma **en vivo** la matriz de confusión de cada modelo, con una tabla caso por caso y la columna *reproduce* (4/4 si los 4 modelos dan lo mismo que en `docs/resultados/`) |
+| **5 · Estudio de resonancia** | Modo radiólogo: subes los `.IMA` / `.dcm` (o un `.zip`) del resonador, se convierten a PNG con `scripts/preprocesamiento/convertidor_dcm_a_png.py` (el mismo del dataset), eliges la serie y los cortes midsagitales (propuesta: 30 %–70 % central), el detector `models/best_disc_detector.pt` recorta los 5 discos L1-S1 y los 4 modelos predicen cada uno. Muestra las cajas sobre el corte, la tabla nivel × modelo, un resumen por nivel entre los cortes elegidos y, al hacer clic en el ensamble, el diagrama de trazabilidad. Los DICOM se borran al convertirlos y el estudio al cabo de 30 min |
 | **4 · Modelos y métricas** | Métricas oficiales (test de originales, test completo, validación), hiperparámetro elegido con validación, **SHA-256 del archivo de pesos cargado** y las figuras de `docs/resultados/comparacion/` |
 
 **Importante para la presentación:** los 45 casos están balanceados a propósito (15 por clase, 3 por nivel). Su exactitud (51–60 %) **no** es la del test oficial, que tiene 768 imágenes y 73 % de Protrusión, donde los modelos dan 87,8–88,9 %. Un tercio de los casos es Degeneración, la clase más difícil.
@@ -128,7 +146,13 @@ Arquitectura en capas: `api/routes/` (HTTP) → `schemas/` (validación con Pyda
 | `GET /api/casos?clase=&nivel=` | Lista de casos de demostración, con filtros |
 | `GET /api/casos/{id}/imagen` | PNG del caso |
 | `POST /api/casos/{id}/predecir` | Los 4 modelos sobre el caso: predicciones, `pasos` (traza), ensamble, `comparacion` con la etiqueta real y con lo registrado |
-| `POST /api/predecir` | Igual, para una imagen subida (`multipart/form-data`, campo `imagen`, máx. 5 MB) |
+| `POST /api/predecir` | Igual, para una imagen subida (`multipart/form-data`, campo `imagen`, máx. 5 MB). `422` con `{motivo, capa, valor, umbral}` si no parece un ROI de disco; `motivo = corte_completo` indica que hay que usar `/api/predecir-corte` |
+| `POST /api/predecir-corte` | Corte sagital completo (PNG/JPG): detecta los 5 discos y los clasifica; `422` si el detector no halla al menos 3 discos en orden |
+| `POST /api/estudios` | Sube `.IMA` / `.dcm` / `.zip` (campo `archivos`, varios). Convierte a PNG y devuelve las series, sus cortes y la propuesta de cortes midsagitales |
+| `GET /api/estudios/{id}` · `GET .../series/{serie}/cortes/{n}/imagen` | Ficha del estudio y PNG de un corte |
+| `POST /api/estudios/{id}/recortar` | `{serie, cortes[], recortar_zona_lumbar}`: detector y recorte de los 5 ROI de cada corte, sin clasificar |
+| `POST /api/estudios/{id}/predecir` | Lo mismo y además los 4 modelos sobre cada ROI, con resumen por nivel |
+| `POST /api/estudios/{id}/png.zip` · `DELETE /api/estudios/{id}` | Descarga los PNG elegidos / borra el estudio |
 | `POST /api/casos/simulacion?clase=&nivel=` | Simulación completa en el servidor: exactitud, matriz de confusión y reproducibilidad por modelo |
 | `GET /resultados/...` | Archivos de `docs/resultados/` (figuras y tablas oficiales), solo lectura |
 
@@ -142,9 +166,9 @@ webapp/
 ├── backend/
 │   ├── main.py                    # app FastAPI; sirve la API, /resultados y la pagina del MVP
 │   ├── requirements.txt           # dependencias minimas para ejecutar el MVP
-│   ├── api/routes/                # sistema.py, casos.py, prediccion.py
+│   ├── api/routes/                # sistema.py, casos.py, prediccion.py, estudios.py
 │   ├── schemas/prediccion.py      # modelos de entrada y salida
-│   ├── services/                  # modelos_service, casos_service, prediccion_service
+│   ├── services/                  # modelos_service, casos_service, prediccion_service, estudios_service, validacion_service
 │   ├── core/config.py             # rutas y dispositivo
 │   └── utils/imagenes.py
 └── frontend/

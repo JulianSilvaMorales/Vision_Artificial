@@ -18,11 +18,15 @@ if not exist "%VENV%\Scripts\python.exe" (
   %PY% -m venv "%VENV%" || (echo [ERROR] No se pudo crear el entorno. & pause & exit /b 1)
 )
 
-if not exist "%VENV%\.instalado" (
-  echo [2/4] Instalando dependencias (la primera vez tarda varios minutos^) ...
+REM .instalado guarda una copia de requirements.txt: si cambia (dependencias nuevas), se reinstala
+set "REQ=webapp\backend\requirements.txt"
+set "INSTALAR=1"
+if exist "%VENV%\.instalado" fc /b "%REQ%" "%VENV%\.instalado" >nul 2>nul && set "INSTALAR=0"
+if "%INSTALAR%"=="1" (
+  echo [2/4] Instalando dependencias (la primera vez, o si cambiaron, tarda varios minutos^) ...
   "%VENV%\Scripts\python.exe" -m pip install --upgrade pip >nul
-  "%VENV%\Scripts\python.exe" -m pip install -r webapp\backend\requirements.txt || (echo [ERROR] Fallo la instalacion. & pause & exit /b 1)
-  echo ok> "%VENV%\.instalado"
+  "%VENV%\Scripts\python.exe" -m pip install -r "%REQ%" || (echo [ERROR] Fallo la instalacion. & pause & exit /b 1)
+  copy /y "%REQ%" "%VENV%\.instalado" >nul
 ) else (
   echo [2/4] Dependencias ya instaladas.
 )

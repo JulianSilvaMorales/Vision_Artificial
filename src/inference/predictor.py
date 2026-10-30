@@ -45,7 +45,8 @@ def abrir_imagen(imagen):
         img = Image.fromarray(imagen)
     else:
         img = Image.open(Path(imagen))
-    return img.convert("RGB")
+    # Los modelos se entrenaron con ROI en escala de grises replicada en 3 canales: una imagen en color se pasa a gris.
+    return img.convert("L").convert("RGB")
 
 
 def _softmax(z):
@@ -135,8 +136,17 @@ class Predictor:
         img = abrir_imagen(imagen)
         return [self.predecir(img, m) for m in MODELOS]
 
-    def trazar(self, imagen):
-        """Corre los 4 modelos sobre una imagen y devuelve cada paso intermedio con su tiempo (ms)."""
+    def distancia_ood(self, emb):
+        """Distancia de Mahalanobis al cuadrado del embedding de la ResNet-50 en el espacio PCA del SVM (ver validacion)."""
+        b = self._cargar("svm")
+        z = b["pca"].transform(b["escalador"].transform(emb[None]))[0]
+        return float(np.sum(z ** 2 / b["pca"].explained_variance_)), b["pca"]
+
+    def trazar(self, imagen, validar=None):
+        """Corre los 4 modelos sobre una imagen y devuelve cada paso intermedio con su tiempo (ms).
+
+        `validar(emb)`, si se pasa, se llama justo despues de calcular el embedding y antes de clasificar; si lanza una
+        excepcion, no se corre ningun modelo mas (rechazo de imagenes que no son un disco)."""
         img = abrir_imagen(imagen)
         pasos, t0 = {}, time.perf_counter()
 
@@ -151,6 +161,8 @@ class Predictor:
 
         t = time.perf_counter()
         emb, prob_r = self._resnet(img)
+        if validar is not None:
+            validar(emb)
         pasos["resnet50"] = dict(ms=ms(t), dimension=int(emb.size), norma=round(float(np.linalg.norm(emb)), 2),
                                  fraccion_ceros=round(float((emb == 0).mean()), 3),
                                  resumen_64=[round(float(v), 4) for v in emb.reshape(64, -1).mean(1)])
@@ -168,7 +180,8 @@ class Predictor:
         t = time.perf_counter()
         p_rf, _, _, z_rf = self._clasico("random_forest", emb)
         bosque = self._cargar("random_forest")["modelo"]
-        votos = np.bincount([int(a.predict_proba(z_rf)[0].argmax()) for a in bosque.estimators_], minlength=len(CLASES))
+        z32 = np.ascontiguousarray(z_rf, dtype=np.float32)     # los arboles de sklearn trabajan en float32
+        votos = np.bincount([int(a.tree_.predict(z32)[0].argmax()) for a in bosque.estimators_], minlength=len(CLASES))
         pasos["random_forest"] = dict(ms=ms(t), arboles=len(bosque.estimators_), votos=dict(zip(CLASES, map(int, votos))))
 
         t = time.perf_counter()
@@ -184,5 +197,6 @@ class Predictor:
         ens = np.mean([p_yolo, prob_r, p_svm, p_rf], 0)
         clases = [r["clase"] for r in res]
         return dict(predicciones=res, pasos=pasos, ms_total=ms(t0), coinciden=len(set(clases)) == 1,
-                    ensamble=dict(clase=CLASES[int(ens.argmax())], puntajes=dict(zip(CLASES, map(float, ens)))),
+                    ensamble=dict(clase=CLASES[int(ens.argmax())], puntajes=dict(zip(CLASES, map(float, ens))),
+                                  nota="Promedio simple; el puntaje del SVM es un softmax de distancias, no una probabilidad calibrada."),
                     imagen_224=img.resize((224, 224)))

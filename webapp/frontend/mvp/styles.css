@@ -76,3 +76,25 @@ button.principal:disabled { background: #94a3b8; cursor: wait; }
 figcaption { font-size: 12px; color: var(--suave); text-align: center; }
 footer { padding: 14px 24px; color: var(--suave); font-size: 12px; }
 code { background: #eef2f7; padding: 0 4px; border-radius: 3px; }
+
+/* ---- 5. estudio de resonancia ---- */
+.tira { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0; }
+.corte { position: relative; flex: 0 0 auto; width: 84px; cursor: pointer; border: 2px solid transparent; border-radius: 4px; }
+.corte img { width: 100%; display: block; border-radius: 2px; }
+.corte.sel { border-color: var(--azul); }
+.corte span { position: absolute; left: 3px; top: 2px; font-size: 10px; background: rgba(15,23,42,.75); color: #fff; padding: 0 4px; border-radius: 3px; }
+.corte.prop span { background: var(--ok); }
+.corte.lejos img { opacity: .45; }
+.corte .estrella { position: absolute; right: 3px; top: 0; color: #f59e0b; font-size: 15px; text-shadow: 0 0 2px #000; }
+.cortes-res { display: grid; gap: 14px; margin-top: 12px; }
+.cortes-res .vista { position: relative; max-width: 260px; }
+.cortes-res .vista img { width: 100%; display: block; }
+.cortes-res .vista svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.fila-corte { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
+.roi-mini { width: 56px; height: 56px; image-rendering: auto; border: 1px solid var(--borde); vertical-align: middle; margin-right: 6px; }
+td.clic { cursor: pointer; text-decoration: underline dotted; }
+.rechazo { color: var(--mal); font-size: 12px; }
+button[hidden] { display: none; }
+.conclusion { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 8px; padding: 10px 14px; font-size: 13px; line-height: 1.5; }
+.conclusion ul { margin: 6px 0; padding-left: 18px; }
+.conclusion p { margin: 4px 0; }

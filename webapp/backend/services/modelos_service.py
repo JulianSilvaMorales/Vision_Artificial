@@ -6,7 +6,7 @@ from functools import lru_cache
 
 import pandas as pd
 
-from webapp.backend.core.config import (CASOS_CSV, DISPOSITIVO, IMAGENES_DEMO, MODELOS, MODELOS_DIR, RAIZ_REPO,
+from webapp.backend.core.config import (CASOS_CSV, DETECTOR_PT, DISPOSITIVO, IMAGENES_DEMO, MODELOS, MODELOS_DIR, RAIZ_REPO,
                                         RESULTADOS_DIR)
 
 CLAVES_CONFIG = ("base", "mejor_epoca", "epocas_corridas", "criterio_best", "criterio", "elegido", "ls", "lr", "lr0",
@@ -38,7 +38,12 @@ def faltantes():
 def imagenes_demo_ok():
     """False si las imagenes de data/demo son punteros de Git LFS (se clono sin Git LFS)."""
     imgs = sorted(IMAGENES_DEMO.glob("*.png"))
-    return bool(imgs) and imgs[0].read_bytes()[:4] == b"\x89PNG"
+    return bool(imgs) and all(_es_png(i) for i in imgs)
+
+
+def _es_png(ruta):
+    with open(ruta, "rb") as f:
+        return f.read(4) == b"\x89PNG"
 
 
 def estado():
@@ -52,6 +57,7 @@ def estado():
     else:
         est = "ok"
     return dict(estado=est, dispositivo=DISPOSITIVO, commit=commit_actual(), imagenes_demo_ok=imgs_ok,
+                detector_ok=DETECTOR_PT.exists() and DETECTOR_PT.stat().st_size > 1024,
                 modelos_disponibles=[m for m in MODELOS if m not in falta], faltan=falta, casos_demo=n_casos)
 
 

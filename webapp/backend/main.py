@@ -15,18 +15,27 @@ import threading
 import webbrowser
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from webapp.backend.api.routes import casos, prediccion, sistema
-from webapp.backend.core.config import FRONTEND_DIR, RESULTADOS_DIR
-from webapp.backend.services import modelos_service, prediccion_service
+from webapp.backend.api.routes import casos, estudios, prediccion, sistema
+from webapp.backend.core.config import CORS_ORIGENES, FRONTEND_DIR, RESULTADOS_DIR
+from webapp.backend.services import estudios_service, modelos_service, prediccion_service
+from webapp.backend.services.estudios_service import EstudioError
+from webapp.backend.services.validacion_service import ImagenRechazada
 
 
 @asynccontextmanager
 async def ciclo_de_vida(_app):
     if not modelos_service.faltantes():
         print(f"Modelos cargados en {prediccion_service.precargar()} s", flush=True)
+    estudios_service.limpiar_vencidos()
+    try:
+        print(f"Detector de discos cargado en {estudios_service.precargar_detector()} s", flush=True)
+    except EstudioError as e:       # sin el detector la pestana de estudios no funciona, pero el resto de la app si
+        print(f"[AVISO] {e.mensaje}", flush=True)
     url = os.environ.get("MVP_ABRIR_NAVEGADOR")
     if url:
         # uvicorn empieza a aceptar conexiones justo despues de este punto
@@ -37,9 +46,24 @@ async def ciclo_de_vida(_app):
 app = FastAPI(title="DeepSpine · MVP de demostracion",
               description="Clasificacion de discos lumbares (RM sagital T2) con 4 modelos. Herramienta academica, "
                           "no diagnostica.", version="0.1.0", lifespan=ciclo_de_vida)
+# CORS solo para el desarrollo del frontend en otro puerto (por ejemplo Vite); en produccion se sirve desde este servidor
+app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGENES, allow_methods=["*"], allow_headers=["*"])
+
+
+@app.exception_handler(ImagenRechazada)
+async def _imagen_rechazada(_req: Request, e: ImagenRechazada):
+    return JSONResponse(status_code=422, content={"detail": e.detalle["mensaje"], **e.detalle})
+
+
+@app.exception_handler(EstudioError)
+async def _estudio_error(_req: Request, e: EstudioError):
+    return JSONResponse(status_code=e.codigo, content={"detail": e.mensaje})
+
+
 app.include_router(sistema.router)
 app.include_router(casos.router)
 app.include_router(prediccion.router)
+app.include_router(estudios.router)
 # figuras y tablas oficiales de docs/resultados (solo lectura), para la pestana de metricas
 app.mount("/resultados", StaticFiles(directory=RESULTADOS_DIR), name="resultados")
 # la pagina del MVP se sirve desde el mismo servidor; se monta al final para no tapar /api y /docs

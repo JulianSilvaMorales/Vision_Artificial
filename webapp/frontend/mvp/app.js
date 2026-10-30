@@ -12,7 +12,11 @@ const pct = (v) => (100 * v).toFixed(1) + " %";
 async function api(ruta, opciones) {
   const r = await fetch(ruta, opciones);
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.detail || `Error ${r.status}`);
+  if (!r.ok) {
+    const e = new Error(typeof j.detail === "string" ? j.detail : `Error ${r.status}`);
+    e.motivo = j.motivo; e.rechazada = r.status === 422 && !!j.motivo;
+    throw e;
+  }
   return j;
 }
 
@@ -30,6 +34,9 @@ async function cargarEstado() {
     if (s.faltan.length) {
       e.className = "estado error";
       e.textContent = `Faltan modelos: ${s.faltan.join(", ")} · ejecuta python scripts/descargar_modelos.py`;
+    } else if (!s.detector_ok) {
+      e.className = "estado error";
+      e.textContent = "Falta models/best_disc_detector.pt (Git LFS) · el modo estudio no funcionará · ejecuta: git lfs pull";
     } else if (!s.imagenes_demo_ok) {
       e.className = "estado error";
       e.textContent = "Las imágenes de data/demo no se descargaron (falta Git LFS) · ejecuta: git lfs install y git lfs pull";
@@ -66,7 +73,7 @@ function tarjetasPrediccion(tr) {
   const real = tr.caso ? ` · etiqueta real: <strong style="color:${COLOR[tr.caso.clase_real]}">${ETIQ[tr.caso.clase_real]}</strong>` : "";
   return `<div class="resumen">
       <span class="chip ${tr.coinciden ? "ok" : "neutro"}">${tr.coinciden ? "Los 4 modelos coinciden" : "Los modelos no coinciden"}</span>
-      <span>Ensamble (promedio): <strong style="color:${COLOR[tr.ensamble.clase]}">${ETIQ[tr.ensamble.clase]}</strong>${real}</span>
+      <span title="${esc(tr.ensamble.nota || "")}">Ensamble (promedio): <strong style="color:${COLOR[tr.ensamble.clase]}">${ETIQ[tr.ensamble.clase]}</strong>${real}</span>
       <span class="nota">Tiempo total: ${tr.ms_total.toFixed(0)} ms</span></div>
     <div class="predicciones">${tarjetas}</div>`;
 }
@@ -169,26 +176,44 @@ async function predecirCaso(c) {
 }
 
 // ---------- 2. subir imagen ----------
+function mensajeRechazo(err) {
+  return `<p class="nota alerta">⛔ ${esc(err.message)}<br>No se muestra ninguna predicción: la imagen no se parece a un recorte de disco lumbar ni a un corte sagital de columna.</p>`;
+}
+
 $("#archivo").addEventListener("change", async (ev) => {
   const f = ev.target.files[0];
   if (!f) return;
-  const datos = new FormData();
-  datos.append("imagen", f);
+  const datos = () => { const d = new FormData(); d.append("imagen", f); return d; };
+  const url = URL.createObjectURL(f);
   $("#subir-resultado").innerHTML = `<p class="nota">Ejecutando los 4 modelos…</p>`;
   try {
-    const tr = await api("/api/predecir", { method: "POST", body: datos });
-    $("#subir-resultado").innerHTML = tarjetasPrediccion(tr) + diagrama(tr, URL.createObjectURL(f));
+    const tr = await api("/api/predecir", { method: "POST", body: datos() });
+    $("#subir-resultado").innerHTML = tarjetasPrediccion(tr) + diagrama(tr, url);
   } catch (err) {
-    $("#subir-resultado").innerHTML = `<p class="nota alerta">${esc(err.message)}</p>`;
+    if (err.motivo === "corte_completo") {
+      $("#subir-resultado").innerHTML = `<p class="nota">Parece un corte completo de columna: detectando los 5 discos…</p>`;
+      try {
+        const r = await api("/api/predecir-corte", { method: "POST", body: datos() });
+        $("#subir-resultado").innerHTML = resultadoCortes([r.cortes[0]], () => url, "subir");
+        enlazarTrazas("#subir-resultado");
+      } catch (err2) {
+        $("#subir-resultado").innerHTML = mensajeRechazo(err2);
+      }
+    } else {
+      $("#subir-resultado").innerHTML = err.rechazada ? mensajeRechazo(err) : `<p class="nota alerta">${esc(err.message)}</p>`;
+    }
+  } finally {
+    ev.target.value = "";     // permite volver a elegir el mismo archivo
   }
 });
 
 // ---------- 3. simulacion ----------
 function matrizHTML(nombre, m, n) {
   const acc = CLASES.reduce((s, _, i) => s + m[i][i], 0);
+  const maximo = Math.max(...m.flat(), 0);
   return `<div class="tarjeta matriz"><h3>${esc(nombre)}</h3>
     <table><tr><th>real \\ pred.</th>${CLASES.map((c) => `<th>${ETIQ[c].slice(0, 5)}</th>`).join("")}</tr>
-    ${CLASES.map((c, i) => `<tr><th>${ETIQ[c].slice(0, 5)}</th>${m[i].map((v, j) => `<td style="background:${i === j ? `rgba(21,128,61,${n ? Math.min(v / 15, 1) * 0.5 : 0})` : v ? "rgba(185,28,28,.12)" : ""}">${v}</td>`).join("")}</tr>`).join("")}
+    ${CLASES.map((c, i) => `<tr><th>${ETIQ[c].slice(0, 5)}</th>${m[i].map((v, j) => `<td style="background:${i === j ? `rgba(21,128,61,${maximo ? Math.min(v / maximo, 1) * 0.5 : 0})` : v ? "rgba(185,28,28,.12)" : ""}">${v}</td>`).join("")}</tr>`).join("")}
     </table><div class="leyenda">Aciertos: ${acc} / ${n}${n ? ` (${pct(acc / n)})` : ""}</div></div>`;
 }
 
@@ -203,8 +228,10 @@ $("#btn-simular").addEventListener("click", async () => {
   const t0 = performance.now();
   $("#sim-tabla").innerHTML = `<tr><th>Caso</th><th>Paciente</th><th>Nivel</th><th>Real</th>${modelos.map((m) => `<th>${CORTO[m]}</th>`).join("")}<th>Ensamble</th><th>Reproduce</th></tr>`;
   try {
-    for (const c of CASOS) {
-      $("#sim-progreso").textContent = `  ${n + 1} / ${CASOS.length}…`;
+    const lista = CASOS.filter((c) => (!$("#filtro-clase").value || c.clase_real === $("#filtro-clase").value)
+      && (!$("#filtro-nivel").value || c.nivel === $("#filtro-nivel").value));     // respeta los filtros de la pestaña 1
+    for (const c of lista) {
+      $("#sim-progreso").textContent = `  ${n + 1} / ${lista.length}…`;
       const tr = await api(`/api/casos/${c.id}/predecir`, { method: "POST" });
       const real = CLASES.indexOf(c.clase_real);
       const celdas = tr.predicciones.map((p) => {
@@ -254,6 +281,251 @@ async function cargarModelos() {
 function irA(tab) {
   const b = document.querySelector(`.tab[data-tab="${tab}"]`);
   if (b) b.click();
+}
+
+// ---------- 5. estudio de resonancia (y cortes completos subidos en la pestaña 2) ----------
+const TRAZAS = {};      // "clave" -> traza de un ROI, para abrir el diagrama de trazabilidad al hacer clic
+const NOMBRES_NIVEL = NIVELES;
+
+function celdaModelo(p) {
+  return `<td style="color:${COLOR[p.clase]}" title="${pct(p.confianza)}">${ETIQ[p.clase]}</td>`;
+}
+
+function filaNivel(nivel, info, clave) {
+  const roi = info.detectado ? `<img class="roi-mini" src="${info.roi}" alt="ROI ${nivel}">` : "";
+  const cabecera = `<th>${roi}${nivel}${info.detectado ? ` <span class="nota">(${pct(info.confianza)})</span>` : ""}</th>`;
+  if (!info.detectado) return `<tr>${cabecera}<td colspan="5" class="nota">no detectado</td></tr>`;
+  const t = info.traza;
+  if (!t) return `<tr>${cabecera}<td colspan="5" class="nota">sin clasificar</td></tr>`;
+  if (t.rechazado) return `<tr>${cabecera}<td colspan="5" class="rechazo">⛔ Rechazado: ${esc(t.rechazado.mensaje)}</td></tr>`;
+  TRAZAS[clave] = { traza: t, roi: info.roi };
+  return `<tr>${cabecera}${t.predicciones.map(celdaModelo).join("")}
+    <td class="clic" data-traza="${clave}" style="color:${COLOR[t.ensamble.clase]}"><strong>${ETIQ[t.ensamble.clase]}</strong></td></tr>`;
+}
+
+function cajasSVG(c) {
+  return `<svg viewBox="0 0 ${c.ancho} ${c.alto}" preserveAspectRatio="none">${NOMBRES_NIVEL.filter((n) => c.niveles[n].detectado).map((n) => {
+    const [x1, y1, x2, y2] = c.niveles[n].caja;
+    return `<rect x="${x1}" y="${y1}" width="${x2 - x1}" height="${y2 - y1}" fill="none" stroke="#f59e0b" stroke-width="2"/>
+      <text x="${x2 + 4}" y="${(y1 + y2) / 2}" fill="#f59e0b" font-size="${Math.max(10, c.alto / 28)}">${n}</text>`;
+  }).join("")}</svg>`;
+}
+
+function resultadoCortes(cortes, urlCorte, prefijo) {
+  return `<div class="cortes-res">` + cortes.map((c) => {
+    const aviso = c.columna_valida ? "" : `<p class="nota alerta">El detector halló ${c.n_detectados} de 5 discos${c.orden_ok ? "" : " y no están en orden"}: este corte no parece un corte sagital lumbar y no se clasifica.</p>`;
+    const filas = NOMBRES_NIVEL.map((n) => filaNivel(n, c.niveles[n], `${prefijo}-${c.corte}-${n}`)).join("");
+    return `<div class="tarjeta"><h3>Corte ${c.corte + 1}</h3>${aviso}
+      <div class="fila-corte"><div class="vista"><img src="${urlCorte(c.corte)}" alt="corte">${cajasSVG(c)}</div>
+      <table class="tabla"><tr><th>Nivel</th><th>YOLOv8s</th><th>ResNet-50</th><th>SVM</th><th>Random Forest</th><th>Ensamble</th></tr>${filas}</table></div></div>`;
+  }).join("") + `</div>`;
+}
+
+function enlazarTrazas(raiz) {
+  document.querySelectorAll(`${raiz} [data-traza]`).forEach((td) => td.addEventListener("click", () => {
+    const { traza, roi } = TRAZAS[td.dataset.traza];
+    let d = document.querySelector(`${raiz} .traza-abierta`);
+    if (!d) { d = document.createElement("div"); d.className = "traza-abierta"; document.querySelector(raiz).appendChild(d); }
+    d.innerHTML = diagrama({ ...traza, imagen_224: roi }, roi);
+    d.scrollIntoView({ behavior: "smooth" });
+  }));
+}
+
+const EST = { id: null, serie: null, ficha: null, sel: new Set(), resultados: [], puntos: {}, recomendados: [], avisoPuntos: "" };
+
+function equipoAviso(e) {
+  const siemens = /siemens/i.test(e.fabricante), campo = parseFloat(e.campo_tesla);
+  return (siemens && campo === 1.5) ? "" : `<p class="nota alerta">Equipo: ${esc(e.fabricante || "?")} ${esc(e.modelo)} ${esc(e.campo_tesla)} T. Los modelos se entrenaron con un solo equipo (Siemens, 1,5 T): con otro equipo los resultados pueden ser menos fiables.</p>`;
+}
+
+function pintarFicha() {
+  const f = EST.ficha, s = f.series.find((x) => x.id === EST.serie);
+  const opciones = f.series.map((x) => `<option value="${x.id}" ${x.id === EST.serie ? "selected" : ""}>${esc(x.descripcion || "(sin descripción)")} · ${x.plano} · ${x.n_cortes} cortes${x.t2_sagital ? " · T2 sagital ✓" : ""}</option>`).join("");
+  const tira = Array.from({ length: s.n_cortes }, (_, i) => {
+    const p = EST.puntos[i];
+    const clase = p ? (p.recomendado ? "rec" : "lejos") : "";
+    const titulo = p ? `Corte ${i + 1} · ${p.recomendado ? "recomendado" : "poco central"}: ${p.motivo}` : `Corte ${i + 1}`;
+    return `
+    <div class="corte ${EST.sel.has(i) ? "sel" : ""} ${s.propuestos.includes(i) ? "prop" : ""} ${clase}" data-n="${i}" title="${esc(titulo)}">
+      <img loading="lazy" src="/api/estudios/${f.id}/series/${s.id}/cortes/${i}/imagen" alt="corte ${i + 1}"><span>${i + 1}</span>${p && p.recomendado ? `<b class="estrella">★</b>` : ""}</div>`;
+  }).join("");
+  $("#est-ficha").innerHTML = `${f.archivos_omitidos ? `<p class="nota">${f.archivos_omitidos} archivo(s) no eran cortes DICOM y se omitieron.</p>` : ""}
+    <div class="filtros"><label>Serie: <select id="est-serie">${opciones}</select></label></div>
+    ${s.plano !== "sagital" ? `<p class="nota alerta">Esta serie no es sagital: para clasificar discos necesitas una serie T2 sagital.</p>` : ""}
+    ${equipoAviso(s.equipo)}
+    <p class="nota">Elige los cortes midsagitales (los verdes son la propuesta: 30 %–70 % central; ★ = recomendados por el detector). Clic en un corte para quitarlo o añadirlo. Seleccionados: <strong id="est-n">${EST.sel.size}</strong></p>
+    <div class="tira" id="est-tira">${tira}</div>
+    ${explicarPuntos()}
+    <div class="filtros">${EST.recomendados.length ? `<button id="est-recomendados">Usar recomendados</button>` : ""}<button id="est-propuesta">Usar la propuesta</button><button id="est-ninguno">Quitar todos</button>
+      <button id="est-png">Descargar PNG elegidos</button><button id="est-analizar" class="principal">Analizar cortes elegidos</button></div>`;
+  $("#est-serie").addEventListener("change", (e) => { EST.serie = e.target.value; EST.sel = new Set(EST.ficha.series.find((x) => x.id === EST.serie).propuestos); EST.resultados = []; $("#est-resultado").innerHTML = ""; pintarFicha(); puntuarPropuestos(); });
+  document.querySelectorAll("#est-tira .corte").forEach((el) => el.addEventListener("click", () => {
+    const n = +el.dataset.n; EST.sel.has(n) ? EST.sel.delete(n) : EST.sel.add(n);
+    el.classList.toggle("sel", EST.sel.has(n)); $("#est-n").textContent = EST.sel.size;
+  }));
+  $("#est-propuesta").addEventListener("click", () => { EST.sel = new Set(s.propuestos); pintarFicha(); });
+  if ($("#est-recomendados")) $("#est-recomendados").addEventListener("click", () => { EST.sel = new Set(EST.recomendados); pintarFicha(); });
+  $("#est-ninguno").addEventListener("click", () => { EST.sel = new Set(); pintarFicha(); });
+  $("#est-png").addEventListener("click", descargarPNG);
+  $("#est-analizar").addEventListener("click", analizarEstudio);
+}
+
+// Recomendacion de cortes centrales: el detector puntua los cortes propuestos (5 discos en orden y con confianza alta =
+// corte midsagital) y se preseleccionan los 3 mejores. Es un apoyo: el radiologo puede cambiar la seleccion.
+function explicarPuntos() {
+  if (EST.avisoPuntos) return `<p class="nota alerta">${esc(EST.avisoPuntos)}</p>`;
+  const ps = Object.values(EST.puntos);
+  if (!ps.length) return "";
+  const rec = ps.filter((p) => p.recomendado).sort((a, b) => a.corte - b.corte);
+  const lejos = ps.filter((p) => !p.recomendado).sort((a, b) => a.posicion - b.posicion);
+  return `<p class="nota">★ Recomendados por el detector (los más centrales): ${rec.map((p) => `corte ${p.corte + 1} <span class="nota">(${esc(p.motivo)})</span>`).join(", ") || "ninguno"}.
+    ${lejos.length ? `<br>Poco centrales: ${lejos.map((p) => `corte ${p.corte + 1} <span class="nota">(${esc(p.motivo)})</span>`).join(", ")}.` : ""}
+    <br><em>Criterio de apoyo, no validado clínicamente: revisa visualmente los cortes antes de analizar.</em></p>`;
+}
+
+async function puntuarPropuestos() {
+  const s = EST.ficha.series.find((x) => x.id === EST.serie);
+  EST.puntos = {}; EST.recomendados = []; EST.avisoPuntos = "";
+  if (s.plano !== "sagital" || !s.propuestos.length) return;
+  const id = EST.id, serie = EST.serie;
+  $("#est-progreso").textContent = "  Evaluando con el detector qué cortes son más centrales…";
+  try {
+    const r = await api(`/api/estudios/${id}/puntuar`, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ serie, cortes: s.propuestos.slice(0, 50) }) });
+    if (EST.id !== id || EST.serie !== serie) return;          // el usuario cambio de estudio o de serie mientras tanto
+    r.cortes.forEach((p) => { EST.puntos[p.corte] = p; });
+    EST.recomendados = r.recomendados;
+    if (r.recomendados.length) EST.sel = new Set(r.recomendados);
+    else EST.avisoPuntos = "El detector no encontró la columna lumbar en ninguno de los cortes propuestos. Revisa que la serie sea T2 sagital lumbar.";
+    $("#est-progreso").textContent = "";
+  } catch (err) {
+    if (EST.id !== id || EST.serie !== serie) return;
+    $("#est-progreso").textContent = `  No se pudieron evaluar los cortes (${err.message}). Se usa la propuesta 30 %–70 %.`;
+  }
+  pintarFicha();
+}
+
+$("#est-subir").addEventListener("click", async () => {
+  const archivos = $("#est-archivos").files;
+  if (!archivos.length) { $("#est-progreso").textContent = "  Elige los archivos del estudio."; return; }
+  const b = $("#est-subir"); b.disabled = true;
+  $("#est-progreso").textContent = "  Subiendo y convirtiendo a PNG…";
+  const datos = new FormData();
+  for (const a of archivos) datos.append("archivos", a);
+  try {
+    EST.ficha = await api("/api/estudios", { method: "POST", body: datos });
+    EST.id = EST.ficha.id; EST.serie = EST.ficha.serie_sugerida; EST.resultados = [];
+    EST.sel = new Set(EST.ficha.series.find((x) => x.id === EST.serie).propuestos);
+    $("#est-progreso").textContent = ""; $("#est-borrar").hidden = false; $("#est-resultado").innerHTML = "";
+    pintarFicha();
+    puntuarPropuestos();
+  } catch (err) {
+    $("#est-progreso").textContent = "  " + err.message;
+  } finally { b.disabled = false; }
+});
+
+$("#est-borrar").addEventListener("click", async () => {
+  if (!EST.id) return;
+  await fetch(`/api/estudios/${EST.id}`, { method: "DELETE" }).catch(() => {});
+  EST.id = null; $("#est-ficha").innerHTML = ""; $("#est-resultado").innerHTML = ""; $("#est-borrar").hidden = true;
+  $("#est-progreso").textContent = "  Estudio borrado del servidor.";
+});
+
+async function descargarPNG() {
+  if (!EST.sel.size) return;
+  const r = await fetch(`/api/estudios/${EST.id}/png.zip`, { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ serie: EST.serie, cortes: [...EST.sel].sort((a, b) => a - b).slice(0, 50) }) });
+  if (!r.ok) { $("#est-progreso").textContent = "  No se pudo descargar."; return; }
+  const url = URL.createObjectURL(await r.blob());
+  const a = Object.assign(document.createElement("a"), { href: url, download: "cortes.zip" });
+  a.click(); URL.revokeObjectURL(url);
+}
+
+const enLista = (xs) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} y ${xs[xs.length - 1]}`);
+
+function conclusionNivel(n, resultados) {
+  const evaluados = resultados.filter((c) => c.niveles[n].traza && c.niveles[n].traza.predicciones);
+  const sinDisco = resultados.filter((c) => !c.niveles[n].detectado).map((c) => c.corte + 1);
+  const rechazados = resultados.filter((c) => c.niveles[n].traza && c.niveles[n].traza.rechazado).map((c) => c.corte + 1);
+  const extra = [sinDisco.length && `no se detectó en ${sinDisco.length === 1 ? "el corte" : "los cortes"} ${enLista(sinDisco)}`,
+    rechazados.length && `se descartó por no parecerse a un disco en ${rechazados.length === 1 ? "el corte" : "los cortes"} ${enLista(rechazados)}`]
+    .filter(Boolean).join("; ");
+  if (!evaluados.length) return { n, clase: null, texto: `<strong>Disco ${n}</strong>: no se pudo evaluar${extra ? ` (${extra})` : ""}.` };
+  const votos = {};
+  evaluados.forEach((c) => (votos[c.niveles[n].traza.ensamble.clase] ||= []).push(c.corte + 1));
+  const [clase, cortes] = Object.entries(votos).sort((a, b) => b[1].length - a[1].length)[0];
+  const k = cortes.length, total = evaluados.length;
+  const unanime = k === total, mayoria = 2 * k > total;
+  const clr = (cl) => `<strong style="color:${COLOR[cl]}">${ETIQ[cl]}</strong>`;
+  const otros = Object.entries(votos).filter(([cl]) => cl !== clase).map(([cl, cs]) => `${ETIQ[cl]} en ${cs.length === 1 ? "el corte" : "los cortes"} ${enLista(cs)}`);
+  let texto = unanime
+    ? `está en estado ${clr(clase)} en ${total === 1 ? "el único corte analizado" : `todos los cortes analizados (${total}/${total})`}`
+    : mayoria
+      ? `está en estado ${clr(clase)} en ${k} de ${total} cortes; ${otros.join("; ")}`
+      : `resultado no concluyente: ${Object.entries(votos).map(([cl, cs]) => `${ETIQ[cl]} en ${cs.length === 1 ? "el corte" : "los cortes"} ${enLista(cs)}`).join("; ")}`;
+  const discrepan = {};
+  evaluados.forEach((c) => c.niveles[n].traza.predicciones.forEach((p) => {
+    if (p.clase !== clase) (discrepan[p.modelo] ||= []).push(p.clase);
+  }));
+  const modelos = Object.entries(discrepan).map(([m, cls]) => `${CORTO[m]} indica ${enLista([...new Set(cls)].map((cl) => ETIQ[cl]))} en ${cls.length} de ${total} cortes`);
+  texto += mayoria ? (modelos.length ? `. Discrepan: ${modelos.join("; ")}` : `. Los 4 modelos coinciden`) : "";
+  return { n, clase: mayoria ? clase : null, unanime, texto: `<strong>Disco ${n}</strong>: ${texto}${extra ? `. Además, ${extra}` : ""}.` };
+}
+
+function conclusionEstudio(resultados) {
+  const cortes = resultados.map((c) => c.corte + 1);
+  const niveles = NOMBRES_NIVEL.map((n) => conclusionNivel(n, resultados));
+  const grupos = {};
+  niveles.filter((x) => x.clase).forEach((x) => (grupos[x.clase] ||= []).push(x.n));
+  const general = Object.entries(grupos).map(([cl, ns]) => `<strong style="color:${COLOR[cl]}">${ETIQ[cl]}</strong> en ${enLista(ns)}`);
+  const dudosos = niveles.filter((x) => !x.clase).map((x) => x.n);
+  if (dudosos.length) general.push(`sin conclusión clara en ${enLista(dudosos)}`);
+  return `<h2 style="margin-top:18px">Conclusión de los cortes analizados</h2>
+    <div class="conclusion">
+      <p>Se ${cortes.length === 1 ? "analizó 1 corte" : `analizaron ${cortes.length} cortes`} (${cortes.length === 1 ? "corte" : "cortes"} ${enLista(cortes)}).
+        Según el ensamble de los 4 modelos: ${general.join("; ")}.</p>
+      <ul>${niveles.map((x) => `<li>${x.texto}</li>`).join("")}</ul>
+      <p class="nota">Orientativo, no es un diagnóstico. Cada disco se clasifica como Normal, Degeneración o Protrusión según la clase del ensamble en cada corte.</p>
+    </div>`;
+}
+
+function resumenEstudio(resultados) {
+  const filas = NOMBRES_NIVEL.map((n) => {
+    const trazas = resultados.map((c) => c.niveles[n].traza).filter((t) => t && t.predicciones);
+    if (!trazas.length) return `<tr><th>${n}</th><td colspan="5" class="nota">sin datos</td></tr>`;
+    const moda = (xs) => { const c = {}; xs.forEach((x) => (c[x] = (c[x] || 0) + 1)); return Object.entries(c).sort((a, b) => b[1] - a[1])[0]; };
+    const celdas = Object.keys(CORTO).map((m) => {
+      const [cl, k] = moda(trazas.map((t) => t.predicciones.find((p) => p.modelo === m).clase));
+      return `<td style="color:${COLOR[cl]}">${ETIQ[cl]} <span class="nota">${k}/${trazas.length}</span></td>`;
+    }).join("");
+    const [ce, ke] = moda(trazas.map((t) => t.ensamble.clase));
+    return `<tr><th>${n}</th>${celdas}<td style="color:${COLOR[ce]}"><strong>${ETIQ[ce]}</strong> <span class="nota">${ke}/${trazas.length}</span></td></tr>`;
+  }).join("");
+  return `<h2 style="margin-top:18px">Detalle por nivel y modelo (clase más votada entre los cortes elegidos)</h2>
+    <table class="tabla"><tr><th>Nivel</th>${Object.values(CORTO).map((m) => `<th>${m}</th>`).join("")}<th>Ensamble</th></tr>${filas}</table>`;
+}
+
+async function analizarEstudio() {
+  const cortes = [...EST.sel].sort((a, b) => a - b);
+  if (!cortes.length) { $("#est-progreso").textContent = "  Elige al menos un corte."; return; }
+  const b = $("#est-analizar"); b.disabled = true;
+  EST.resultados = [];
+  $("#est-resultado").innerHTML = `<div id="est-cortes"></div><div id="est-resumen"></div>`;
+  const url = (n) => `/api/estudios/${EST.id}/series/${EST.serie}/cortes/${n}/imagen`;
+  try {
+    for (const [i, n] of cortes.entries()) {
+      $("#est-progreso").textContent = `  Corte ${i + 1} de ${cortes.length} (${n + 1})… cada corte tarda unos segundos`;
+      const r = await api(`/api/estudios/${EST.id}/predecir`, { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serie: EST.serie, cortes: [n] }) });
+      EST.resultados.push(r.cortes[0]);
+      $("#est-cortes").innerHTML = resultadoCortes(EST.resultados, url, "est");
+      $("#est-resumen").innerHTML = conclusionEstudio(EST.resultados) + resumenEstudio(EST.resultados);
+      enlazarTrazas("#est-resultado");
+    }
+    $("#est-progreso").textContent = "  Listo. Haz clic en el ensamble de un nivel para ver la trazabilidad.";
+  } catch (err) {
+    $("#est-progreso").textContent = "  " + err.message;
+  } finally { b.disabled = false; }
 }
 
 cargarEstado();
