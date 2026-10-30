@@ -48,6 +48,13 @@ async def recortar(id_estudio: str, sel: SeleccionCortes):
     return await run_in_threadpool(estudios_service.recortar, id_estudio, sel.serie, sel.cortes, sel.recortar_zona_lumbar)
 
 
+@router.post("/{id_estudio}/puntuar")
+async def puntuar(id_estudio: str, sel: SeleccionCortes):
+    """Ordena los cortes elegidos segun lo bien que el detector ve los 5 discos (indicio de corte midsagital) y
+    recomienda los 3 mejores. Es un apoyo: el radiologo puede cambiar la seleccion."""
+    return await run_in_threadpool(estudios_service.puntuar_cortes, id_estudio, sel.serie, sel.cortes, sel.recortar_zona_lumbar)
+
+
 @router.post("/{id_estudio}/predecir")
 async def predecir(id_estudio: str, sel: SeleccionCortes):
     """Recorta y corre los 4 modelos sobre cada ROI. Un ROI rechazado trae `rechazado` en vez de la traza."""

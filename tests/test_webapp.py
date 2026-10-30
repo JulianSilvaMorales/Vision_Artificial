@@ -307,3 +307,34 @@ def test_detectar_rois_usa_el_codigo_real_de_los_scripts(monkeypatch):
     assert estudios_service._orden_ok(rois)
     sin_recorte = estudios_service.detectar_rois(gris, recortar_zona_lumbar=False)
     assert sin_recorte["L1-L2"]["caja"][1] == 30
+
+
+def test_puntuar_recomienda_los_cortes_mas_centrales(estudio, monkeypatch):
+    # cortes 3..6 propuestos: el 3 ve 3 discos, el 4 los 5 pero fuera de orden, el 5 y el 6 los 5 en orden (el 6 con mas confianza)
+    def caja(i):
+        return [10, 10 + 40 * i, 30, 30 + 40 * i]
+
+    def rois(n, conf, orden=True):
+        niveles = estudios_service.NIVELES[:n]
+        orden_y = range(len(niveles)) if orden else reversed(range(len(niveles)))
+        return {nv: dict(roi_falso(conf), caja=caja(i)) for nv, i in zip(niveles, orden_y)}
+
+    respuestas = iter([rois(3, 0.9), rois(5, 0.9, orden=False), rois(5, 0.7), rois(5, 0.8)])
+    monkeypatch.setattr(estudios_service, "detectar_rois", lambda g, r=True: next(respuestas))
+    r = client.post(f"/api/estudios/{estudio['id']}/puntuar", json=dict(serie=estudio["serie_sugerida"], cortes=[3, 4, 5, 6]))
+    assert r.status_code == 200
+    d = r.json()
+    p = {c["corte"]: c for c in d["cortes"]}
+    # el 4 no es columna valida (discos fuera de orden); el 3 si (3 discos en orden): se recomiendan 6, 5 y 3
+    assert d["recomendados"] == [3, 5, 6]
+    assert p[6]["posicion"] == 1 and p[5]["posicion"] == 2
+    assert not p[4]["recomendado"] and p[4]["motivo"] == "los discos detectados no estan en orden"
+    assert p[3]["motivo"] == "solo 3 de 5 discos detectados"
+    assert p[6]["puntaje"] == 0.8
+
+
+def test_puntuar_sin_columna_no_recomienda_nada(estudio, monkeypatch):
+    monkeypatch.setattr(estudios_service, "detectar_rois", lambda g, r=True: {})
+    r = client.post(f"/api/estudios/{estudio['id']}/puntuar", json=dict(serie=estudio["serie_sugerida"], cortes=[3, 4]))
+    assert r.status_code == 200 and r.json()["recomendados"] == []
+    assert r.json()["cortes"][0]["motivo"] == "solo 0 de 5 discos detectados"

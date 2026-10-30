@@ -33,6 +33,7 @@ from webapp.backend.utils.scripts import cargar
 NIVELES = ["L1-L2", "L2-L3", "L3-L4", "L4-L5", "L5-S1"]
 CONF_DETECTOR, IOU_DETECTOR = 0.35, 0.4
 MIN_NIVELES_COLUMNA = 3          # un corte se acepta como "columna lumbar" si el detector halla al menos 3 niveles en orden
+N_RECOMENDADOS = 3               # cortes que se recomiendan por defecto entre los propuestos
 
 
 class EstudioError(Exception):
@@ -277,6 +278,39 @@ def recortar(id_estudio, serie, cortes, recortar_zona_lumbar=True):
         gris = _leer_gris(ruta_corte(id_estudio, serie, n))
         out.append(_describir_corte(gris, detectar_rois(gris, recortar_zona_lumbar), corte=n))
     return dict(estudio=id_estudio, serie=serie, cortes=out)
+
+
+def _motivo(c, conf_media):
+    if c["n_detectados"] < 5:
+        return f"solo {c['n_detectados']} de 5 discos detectados"
+    if not c["orden_ok"]:
+        return "los discos detectados no estan en orden"
+    return f"confianza media del detector {round(100 * conf_media)} %"
+
+
+def puntuar_cortes(id_estudio, serie, cortes, recortar_zona_lumbar=True, n_recomendados=N_RECOMENDADOS):
+    """Ordena los cortes por lo bien que el detector ve la columna, como indicio de lo central (midsagital) que es cada uno.
+
+    En un corte midsagital se ven los 5 discos en orden y con confianza alta; en uno lateral el detector halla menos discos
+    o con menos confianza. Criterio, en orden: columna valida, discos detectados, orden correcto, confianza media.
+    Se recomiendan los `n_recomendados` mejores entre los cortes con columna valida. Es un criterio de apoyo, no validado:
+    el radiologo decide."""
+    puntos = []
+    for n in cortes:
+        gris = _leer_gris(ruta_corte(id_estudio, serie, n))
+        rois = detectar_rois(gris, recortar_zona_lumbar)
+        c = _describir_corte(gris, rois, corte=n)
+        conf = float(np.mean([r["confianza"] for r in rois.values()])) if rois else 0.0
+        puntos.append(dict(corte=n, n_detectados=c["n_detectados"], orden_ok=c["orden_ok"],
+                           columna_valida=c["columna_valida"], confianza_media=round(conf, 3),
+                           puntaje=round(conf * c["n_detectados"] / 5, 3), motivo=_motivo(c, conf)))
+    ranking = sorted(puntos, key=lambda p: (p["columna_valida"], p["n_detectados"], p["orden_ok"], p["confianza_media"]),
+                     reverse=True)
+    recomendados = [p["corte"] for p in ranking if p["columna_valida"]][:n_recomendados]
+    for p in puntos:
+        p["recomendado"] = p["corte"] in recomendados
+        p["posicion"] = ranking.index(p) + 1
+    return dict(estudio=id_estudio, serie=serie, cortes=puntos, recomendados=sorted(recomendados))
 
 
 # ---------- clasificacion ----------

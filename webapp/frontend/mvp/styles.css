@@ -84,6 +84,8 @@ code { background: #eef2f7; padding: 0 4px; border-radius: 3px; }
 .corte.sel { border-color: var(--azul); }
 .corte span { position: absolute; left: 3px; top: 2px; font-size: 10px; background: rgba(15,23,42,.75); color: #fff; padding: 0 4px; border-radius: 3px; }
 .corte.prop span { background: var(--ok); }
+.corte.lejos img { opacity: .45; }
+.corte .estrella { position: absolute; right: 3px; top: 0; color: #f59e0b; font-size: 15px; text-shadow: 0 0 2px #000; }
 .cortes-res { display: grid; gap: 14px; margin-top: 12px; }
 .cortes-res .vista { position: relative; max-width: 260px; }
 .cortes-res .vista img { width: 100%; display: block; }

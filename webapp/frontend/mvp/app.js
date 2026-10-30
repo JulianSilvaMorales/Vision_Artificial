@@ -331,7 +331,7 @@ function enlazarTrazas(raiz) {
   }));
 }
 
-const EST = { id: null, serie: null, ficha: null, sel: new Set(), resultados: [] };
+const EST = { id: null, serie: null, ficha: null, sel: new Set(), resultados: [], puntos: {}, recomendados: [], avisoPuntos: "" };
 
 function equipoAviso(e) {
   const siemens = /siemens/i.test(e.fabricante), campo = parseFloat(e.campo_tesla);
@@ -341,26 +341,68 @@ function equipoAviso(e) {
 function pintarFicha() {
   const f = EST.ficha, s = f.series.find((x) => x.id === EST.serie);
   const opciones = f.series.map((x) => `<option value="${x.id}" ${x.id === EST.serie ? "selected" : ""}>${esc(x.descripcion || "(sin descripción)")} · ${x.plano} · ${x.n_cortes} cortes${x.t2_sagital ? " · T2 sagital ✓" : ""}</option>`).join("");
-  const tira = Array.from({ length: s.n_cortes }, (_, i) => `
-    <div class="corte ${EST.sel.has(i) ? "sel" : ""} ${s.propuestos.includes(i) ? "prop" : ""}" data-n="${i}" title="Corte ${i + 1}">
-      <img loading="lazy" src="/api/estudios/${f.id}/series/${s.id}/cortes/${i}/imagen" alt="corte ${i + 1}"><span>${i + 1}</span></div>`).join("");
+  const tira = Array.from({ length: s.n_cortes }, (_, i) => {
+    const p = EST.puntos[i];
+    const clase = p ? (p.recomendado ? "rec" : "lejos") : "";
+    const titulo = p ? `Corte ${i + 1} · ${p.recomendado ? "recomendado" : "poco central"}: ${p.motivo}` : `Corte ${i + 1}`;
+    return `
+    <div class="corte ${EST.sel.has(i) ? "sel" : ""} ${s.propuestos.includes(i) ? "prop" : ""} ${clase}" data-n="${i}" title="${esc(titulo)}">
+      <img loading="lazy" src="/api/estudios/${f.id}/series/${s.id}/cortes/${i}/imagen" alt="corte ${i + 1}"><span>${i + 1}</span>${p && p.recomendado ? `<b class="estrella">★</b>` : ""}</div>`;
+  }).join("");
   $("#est-ficha").innerHTML = `${f.archivos_omitidos ? `<p class="nota">${f.archivos_omitidos} archivo(s) no eran cortes DICOM y se omitieron.</p>` : ""}
     <div class="filtros"><label>Serie: <select id="est-serie">${opciones}</select></label></div>
     ${s.plano !== "sagital" ? `<p class="nota alerta">Esta serie no es sagital: para clasificar discos necesitas una serie T2 sagital.</p>` : ""}
     ${equipoAviso(s.equipo)}
-    <p class="nota">Elige los cortes midsagitales (los verdes son la propuesta: 30 %–70 % central). Clic en un corte para quitarlo o añadirlo. Seleccionados: <strong id="est-n">${EST.sel.size}</strong></p>
+    <p class="nota">Elige los cortes midsagitales (los verdes son la propuesta: 30 %–70 % central; ★ = recomendados por el detector). Clic en un corte para quitarlo o añadirlo. Seleccionados: <strong id="est-n">${EST.sel.size}</strong></p>
     <div class="tira" id="est-tira">${tira}</div>
-    <div class="filtros"><button id="est-propuesta">Usar la propuesta</button><button id="est-ninguno">Quitar todos</button>
+    ${explicarPuntos()}
+    <div class="filtros">${EST.recomendados.length ? `<button id="est-recomendados">Usar recomendados</button>` : ""}<button id="est-propuesta">Usar la propuesta</button><button id="est-ninguno">Quitar todos</button>
       <button id="est-png">Descargar PNG elegidos</button><button id="est-analizar" class="principal">Analizar cortes elegidos</button></div>`;
-  $("#est-serie").addEventListener("change", (e) => { EST.serie = e.target.value; EST.sel = new Set(EST.ficha.series.find((x) => x.id === EST.serie).propuestos); EST.resultados = []; $("#est-resultado").innerHTML = ""; pintarFicha(); });
+  $("#est-serie").addEventListener("change", (e) => { EST.serie = e.target.value; EST.sel = new Set(EST.ficha.series.find((x) => x.id === EST.serie).propuestos); EST.resultados = []; $("#est-resultado").innerHTML = ""; pintarFicha(); puntuarPropuestos(); });
   document.querySelectorAll("#est-tira .corte").forEach((el) => el.addEventListener("click", () => {
     const n = +el.dataset.n; EST.sel.has(n) ? EST.sel.delete(n) : EST.sel.add(n);
     el.classList.toggle("sel", EST.sel.has(n)); $("#est-n").textContent = EST.sel.size;
   }));
   $("#est-propuesta").addEventListener("click", () => { EST.sel = new Set(s.propuestos); pintarFicha(); });
+  if ($("#est-recomendados")) $("#est-recomendados").addEventListener("click", () => { EST.sel = new Set(EST.recomendados); pintarFicha(); });
   $("#est-ninguno").addEventListener("click", () => { EST.sel = new Set(); pintarFicha(); });
   $("#est-png").addEventListener("click", descargarPNG);
   $("#est-analizar").addEventListener("click", analizarEstudio);
+}
+
+// Recomendacion de cortes centrales: el detector puntua los cortes propuestos (5 discos en orden y con confianza alta =
+// corte midsagital) y se preseleccionan los 3 mejores. Es un apoyo: el radiologo puede cambiar la seleccion.
+function explicarPuntos() {
+  if (EST.avisoPuntos) return `<p class="nota alerta">${esc(EST.avisoPuntos)}</p>`;
+  const ps = Object.values(EST.puntos);
+  if (!ps.length) return "";
+  const rec = ps.filter((p) => p.recomendado).sort((a, b) => a.corte - b.corte);
+  const lejos = ps.filter((p) => !p.recomendado).sort((a, b) => a.posicion - b.posicion);
+  return `<p class="nota">★ Recomendados por el detector (los más centrales): ${rec.map((p) => `corte ${p.corte + 1} <span class="nota">(${esc(p.motivo)})</span>`).join(", ") || "ninguno"}.
+    ${lejos.length ? `<br>Poco centrales: ${lejos.map((p) => `corte ${p.corte + 1} <span class="nota">(${esc(p.motivo)})</span>`).join(", ")}.` : ""}
+    <br><em>Criterio de apoyo, no validado clínicamente: revisa visualmente los cortes antes de analizar.</em></p>`;
+}
+
+async function puntuarPropuestos() {
+  const s = EST.ficha.series.find((x) => x.id === EST.serie);
+  EST.puntos = {}; EST.recomendados = []; EST.avisoPuntos = "";
+  if (s.plano !== "sagital" || !s.propuestos.length) return;
+  const id = EST.id, serie = EST.serie;
+  $("#est-progreso").textContent = "  Evaluando con el detector qué cortes son más centrales…";
+  try {
+    const r = await api(`/api/estudios/${id}/puntuar`, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ serie, cortes: s.propuestos.slice(0, 50) }) });
+    if (EST.id !== id || EST.serie !== serie) return;          // el usuario cambio de estudio o de serie mientras tanto
+    r.cortes.forEach((p) => { EST.puntos[p.corte] = p; });
+    EST.recomendados = r.recomendados;
+    if (r.recomendados.length) EST.sel = new Set(r.recomendados);
+    else EST.avisoPuntos = "El detector no encontró la columna lumbar en ninguno de los cortes propuestos. Revisa que la serie sea T2 sagital lumbar.";
+    $("#est-progreso").textContent = "";
+  } catch (err) {
+    if (EST.id !== id || EST.serie !== serie) return;
+    $("#est-progreso").textContent = `  No se pudieron evaluar los cortes (${err.message}). Se usa la propuesta 30 %–70 %.`;
+  }
+  pintarFicha();
 }
 
 $("#est-subir").addEventListener("click", async () => {
@@ -376,6 +418,7 @@ $("#est-subir").addEventListener("click", async () => {
     EST.sel = new Set(EST.ficha.series.find((x) => x.id === EST.serie).propuestos);
     $("#est-progreso").textContent = ""; $("#est-borrar").hidden = false; $("#est-resultado").innerHTML = "";
     pintarFicha();
+    puntuarPropuestos();
   } catch (err) {
     $("#est-progreso").textContent = "  " + err.message;
   } finally { b.disabled = false; }
