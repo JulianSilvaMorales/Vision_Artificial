@@ -441,6 +441,54 @@ async function descargarPNG() {
   a.click(); URL.revokeObjectURL(url);
 }
 
+const enLista = (xs) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} y ${xs[xs.length - 1]}`);
+
+function conclusionNivel(n, resultados) {
+  const evaluados = resultados.filter((c) => c.niveles[n].traza && c.niveles[n].traza.predicciones);
+  const sinDisco = resultados.filter((c) => !c.niveles[n].detectado).map((c) => c.corte + 1);
+  const rechazados = resultados.filter((c) => c.niveles[n].traza && c.niveles[n].traza.rechazado).map((c) => c.corte + 1);
+  const extra = [sinDisco.length && `no se detectó en ${sinDisco.length === 1 ? "el corte" : "los cortes"} ${enLista(sinDisco)}`,
+    rechazados.length && `se descartó por no parecerse a un disco en ${rechazados.length === 1 ? "el corte" : "los cortes"} ${enLista(rechazados)}`]
+    .filter(Boolean).join("; ");
+  if (!evaluados.length) return { n, clase: null, texto: `<strong>Disco ${n}</strong>: no se pudo evaluar${extra ? ` (${extra})` : ""}.` };
+  const votos = {};
+  evaluados.forEach((c) => (votos[c.niveles[n].traza.ensamble.clase] ||= []).push(c.corte + 1));
+  const [clase, cortes] = Object.entries(votos).sort((a, b) => b[1].length - a[1].length)[0];
+  const k = cortes.length, total = evaluados.length;
+  const unanime = k === total, mayoria = 2 * k > total;
+  const clr = (cl) => `<strong style="color:${COLOR[cl]}">${ETIQ[cl]}</strong>`;
+  const otros = Object.entries(votos).filter(([cl]) => cl !== clase).map(([cl, cs]) => `${ETIQ[cl]} en ${cs.length === 1 ? "el corte" : "los cortes"} ${enLista(cs)}`);
+  let texto = unanime
+    ? `está en estado ${clr(clase)} en ${total === 1 ? "el único corte analizado" : `todos los cortes analizados (${total}/${total})`}`
+    : mayoria
+      ? `está en estado ${clr(clase)} en ${k} de ${total} cortes; ${otros.join("; ")}`
+      : `resultado no concluyente: ${Object.entries(votos).map(([cl, cs]) => `${ETIQ[cl]} en ${cs.length === 1 ? "el corte" : "los cortes"} ${enLista(cs)}`).join("; ")}`;
+  const discrepan = {};
+  evaluados.forEach((c) => c.niveles[n].traza.predicciones.forEach((p) => {
+    if (p.clase !== clase) (discrepan[p.modelo] ||= []).push(p.clase);
+  }));
+  const modelos = Object.entries(discrepan).map(([m, cls]) => `${CORTO[m]} indica ${enLista([...new Set(cls)].map((cl) => ETIQ[cl]))} en ${cls.length} de ${total} cortes`);
+  texto += mayoria ? (modelos.length ? `. Discrepan: ${modelos.join("; ")}` : `. Los 4 modelos coinciden`) : "";
+  return { n, clase: mayoria ? clase : null, unanime, texto: `<strong>Disco ${n}</strong>: ${texto}${extra ? `. Además, ${extra}` : ""}.` };
+}
+
+function conclusionEstudio(resultados) {
+  const cortes = resultados.map((c) => c.corte + 1);
+  const niveles = NOMBRES_NIVEL.map((n) => conclusionNivel(n, resultados));
+  const grupos = {};
+  niveles.filter((x) => x.clase).forEach((x) => (grupos[x.clase] ||= []).push(x.n));
+  const general = Object.entries(grupos).map(([cl, ns]) => `<strong style="color:${COLOR[cl]}">${ETIQ[cl]}</strong> en ${enLista(ns)}`);
+  const dudosos = niveles.filter((x) => !x.clase).map((x) => x.n);
+  if (dudosos.length) general.push(`sin conclusión clara en ${enLista(dudosos)}`);
+  return `<h2 style="margin-top:18px">Conclusión de los cortes analizados</h2>
+    <div class="conclusion">
+      <p>Se ${cortes.length === 1 ? "analizó 1 corte" : `analizaron ${cortes.length} cortes`} (${cortes.length === 1 ? "corte" : "cortes"} ${enLista(cortes)}).
+        Según el ensamble de los 4 modelos: ${general.join("; ")}.</p>
+      <ul>${niveles.map((x) => `<li>${x.texto}</li>`).join("")}</ul>
+      <p class="nota">Orientativo, no es un diagnóstico. Cada disco se clasifica como Normal, Degeneración o Protrusión según la clase del ensamble en cada corte.</p>
+    </div>`;
+}
+
 function resumenEstudio(resultados) {
   const filas = NOMBRES_NIVEL.map((n) => {
     const trazas = resultados.map((c) => c.niveles[n].traza).filter((t) => t && t.predicciones);
@@ -453,7 +501,7 @@ function resumenEstudio(resultados) {
     const [ce, ke] = moda(trazas.map((t) => t.ensamble.clase));
     return `<tr><th>${n}</th>${celdas}<td style="color:${COLOR[ce]}"><strong>${ETIQ[ce]}</strong> <span class="nota">${ke}/${trazas.length}</span></td></tr>`;
   }).join("");
-  return `<h2 style="margin-top:18px">Resumen por nivel (clase más votada entre los cortes elegidos)</h2>
+  return `<h2 style="margin-top:18px">Detalle por nivel y modelo (clase más votada entre los cortes elegidos)</h2>
     <table class="tabla"><tr><th>Nivel</th>${Object.values(CORTO).map((m) => `<th>${m}</th>`).join("")}<th>Ensamble</th></tr>${filas}</table>`;
 }
 
@@ -471,7 +519,7 @@ async function analizarEstudio() {
         body: JSON.stringify({ serie: EST.serie, cortes: [n] }) });
       EST.resultados.push(r.cortes[0]);
       $("#est-cortes").innerHTML = resultadoCortes(EST.resultados, url, "est");
-      $("#est-resumen").innerHTML = resumenEstudio(EST.resultados);
+      $("#est-resumen").innerHTML = conclusionEstudio(EST.resultados) + resumenEstudio(EST.resultados);
       enlazarTrazas("#est-resultado");
     }
     $("#est-progreso").textContent = "  Listo. Haz clic en el ensamble de un nivel para ver la trazabilidad.";

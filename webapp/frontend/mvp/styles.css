@@ -95,3 +95,6 @@ code { background: #eef2f7; padding: 0 4px; border-radius: 3px; }
 td.clic { cursor: pointer; text-decoration: underline dotted; }
 .rechazo { color: var(--mal); font-size: 12px; }
 button[hidden] { display: none; }
+.conclusion { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 8px; padding: 10px 14px; font-size: 13px; line-height: 1.5; }
+.conclusion ul { margin: 6px 0; padding-left: 18px; }
+.conclusion p { margin: 4px 0; }
