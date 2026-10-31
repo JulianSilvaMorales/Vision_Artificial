@@ -338,3 +338,19 @@ def test_puntuar_sin_columna_no_recomienda_nada(estudio, monkeypatch):
     r = client.post(f"/api/estudios/{estudio['id']}/puntuar", json=dict(serie=estudio["serie_sugerida"], cortes=[3, 4]))
     assert r.status_code == 200 and r.json()["recomendados"] == []
     assert r.json()["cortes"][0]["motivo"] == "solo 0 de 5 discos detectados"
+
+
+# ---------- paginas: aplicacion en la raiz y demo en /mvp ----------
+def test_raiz_sirve_la_app_y_mvp_la_demo():
+    r = client.get("/")
+    assert r.status_code == 200 and "Apoyo al diagnóstico lumbar" in r.text and 'src="js/main.js"' in r.text
+    r = client.get("/mvp", follow_redirects=False)
+    assert r.status_code in (301, 302, 307, 308) and r.headers["location"] == "/mvp/"
+    r = client.get("/mvp/")
+    assert r.status_code == 200 and "MVP de demostración" in r.text
+
+
+def test_paginas_sin_cache():
+    for ruta in ("/", "/js/main.js", "/css/base.css", "/mvp/app.js"):
+        r = client.get(ruta)
+        assert r.status_code == 200 and r.headers["cache-control"] == "no-cache", ruta
