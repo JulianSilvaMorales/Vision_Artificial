@@ -1,8 +1,9 @@
-"""Backend del MVP: API de los 4 modelos y pagina de demostracion.
+"""Backend de DeepSpine: API de los 4 modelos, aplicacion para el radiologo y demo del MVP.
 
 Ejecutar desde la raiz del repo:
     uvicorn webapp.backend.main:app --port 8000
-y abrir http://localhost:8000 (documentacion de la API en http://localhost:8000/docs).
+y abrir http://localhost:8000 (aplicacion), http://localhost:8000/mvp (demo con casos, simulacion y metricas) o
+http://localhost:8000/docs (documentacion de la API).
 
 Al arrancar carga los 4 modelos (si estan en models/), asi la primera prediccion no espera. Si la variable
 MVP_ABRIR_NAVEGADOR tiene una URL (la ponen los scripts webapp/iniciar_mvp.*), abre el navegador cuando el
@@ -17,14 +18,23 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from webapp.backend.api.routes import casos, estudios, prediccion, sistema
-from webapp.backend.core.config import CORS_ORIGENES, FRONTEND_DIR, RESULTADOS_DIR
+from webapp.backend.core.config import CORS_ORIGENES, FRONTEND_APP_DIR, FRONTEND_DIR, RESULTADOS_DIR
 from webapp.backend.services import estudios_service, modelos_service, prediccion_service
 from webapp.backend.services.estudios_service import EstudioError
 from webapp.backend.services.validacion_service import ImagenRechazada
+
+
+class PaginasSinCache(StaticFiles):
+    """Archivos de las paginas con Cache-Control: no-cache: el navegador revalida (ETag) y nunca usa un app.js viejo."""
+
+    async def get_response(self, path, scope):
+        r = await super().get_response(path, scope)
+        r.headers["Cache-Control"] = "no-cache"
+        return r
 
 
 @asynccontextmanager
@@ -43,7 +53,7 @@ async def ciclo_de_vida(_app):
     yield
 
 
-app = FastAPI(title="DeepSpine · MVP de demostracion",
+app = FastAPI(title="DeepSpine · Apoyo al diagnostico lumbar",
               description="Clasificacion de discos lumbares (RM sagital T2) con 4 modelos. Herramienta academica, "
                           "no diagnostica.", version="0.1.0", lifespan=ciclo_de_vida)
 # CORS solo para el desarrollo del frontend en otro puerto (por ejemplo Vite); en produccion se sirve desde este servidor
@@ -66,5 +76,11 @@ app.include_router(prediccion.router)
 app.include_router(estudios.router)
 # figuras y tablas oficiales de docs/resultados (solo lectura), para la pestana de metricas
 app.mount("/resultados", StaticFiles(directory=RESULTADOS_DIR), name="resultados")
-# la pagina del MVP se sirve desde el mismo servidor; se monta al final para no tapar /api y /docs
-app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+@app.get("/mvp", include_in_schema=False)
+def _mvp_sin_barra():
+    return RedirectResponse("/mvp/")
+
+
+# las paginas se sirven desde el mismo servidor; se montan al final para no tapar /api y /docs
+app.mount("/mvp", PaginasSinCache(directory=FRONTEND_DIR, html=True), name="mvp")
+app.mount("/", PaginasSinCache(directory=FRONTEND_APP_DIR, html=True), name="app")

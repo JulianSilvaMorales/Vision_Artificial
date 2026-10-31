@@ -13,7 +13,8 @@ DISPOSITIVO = os.environ.get("DEEPSPINE_DISPOSITIVO", "cpu")
 DEMO_DIR = RAIZ_REPO / "data" / "demo"
 CASOS_CSV = DEMO_DIR / "casos.csv"
 IMAGENES_DEMO = DEMO_DIR / "imagenes"
-FRONTEND_DIR = RAIZ_REPO / "webapp" / "frontend" / "mvp"
+FRONTEND_DIR = RAIZ_REPO / "webapp" / "frontend" / "mvp"              # demo del MVP, servida en /mvp
+FRONTEND_APP_DIR = RAIZ_REPO / "webapp" / "frontend" / "clinica"     # aplicacion para el radiologo, servida en /
 TAMANO_MAXIMO_IMAGEN = 5 * 1024 * 1024        # bytes aceptados en /api/predecir
 
 # Estudios de resonancia subidos por el radiologo (se guardan en una carpeta temporal y se borran solos)
@@ -34,6 +35,6 @@ MODELOS = {
     "random_forest": dict(slug="modelo4_random_forest", archivo="random_forest.joblib"),
 }
 
-__all__ = ["DISPOSITIVO", "DEMO_DIR", "CASOS_CSV", "IMAGENES_DEMO", "FRONTEND_DIR", "TAMANO_MAXIMO_IMAGEN",
+__all__ = ["DISPOSITIVO", "DEMO_DIR", "CASOS_CSV", "IMAGENES_DEMO", "FRONTEND_DIR", "FRONTEND_APP_DIR", "TAMANO_MAXIMO_IMAGEN",
            "MODELOS", "MODELOS_DIR", "RAIZ_REPO", "RESULTADOS_DIR", "ESTUDIOS_DIR", "ESTUDIO_MAX_BYTES",
            "ESTUDIO_MAX_ARCHIVOS", "ESTUDIO_TTL_MIN", "SCRIPTS_DIR", "DETECTOR_PT", "UMBRAL_RECHAZO_JSON", "CORS_ORIGENES"]

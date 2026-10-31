@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="es" data-theme="oscuro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DeepSpine · Apoyo al diagnóstico lumbar</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231f6feb'/%3E%3Cg fill='%23fff'%3E%3Crect x='11' y='4' width='10' height='5' rx='2'/%3E%3Crect x='11' y='11' width='10' height='5' rx='2'/%3E%3Crect x='11' y='18' width='10' height='5' rx='2'/%3E%3Crect x='11' y='25' width='10' height='4' rx='2'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/pasos.css">
+  <link rel="stylesheet" href="css/informe.css">
+  <script>
+    // tema guardado antes de pintar, para que no parpadee
+    try { const t = localStorage.getItem("deepspine.tema"); if (t) document.documentElement.dataset.theme = JSON.parse(t); } catch (e) {}
+  </script>
+</head>
+<body>
+<header class="barra">
+  <div class="marca">
+    <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--acento)"/><g fill="#fff"><rect x="11" y="4" width="10" height="5" rx="2"/><rect x="11" y="11" width="10" height="5" rx="2"/><rect x="11" y="18" width="10" height="5" rx="2"/><rect x="11" y="25" width="10" height="4" rx="2"/></g></svg>
+    <div><strong>DeepSpine</strong><span> · Apoyo al diagnóstico lumbar</span></div>
+  </div>
+  <nav aria-label="Pasos del estudio">
+    <ol class="pasos">
+      <li><button type="button" data-paso="cargar" aria-current="step"><b>1</b>Cargar</button></li>
+      <li><button type="button" data-paso="cortes" disabled><b>2</b>Cortes</button></li>
+      <li><button type="button" data-paso="resultados" disabled><b>3</b>Resultados</button></li>
+      <li><button type="button" data-paso="informe" disabled><b>4</b>Informe</button></li>
+    </ol>
+  </nav>
+  <div class="acciones">
+    <button type="button" id="btn-imagen" class="secundario">Analizar una imagen</button>
+    <button type="button" id="estado" class="estado" aria-live="polite"><i></i><span>Conectando…</span></button>
+    <button type="button" id="btn-tema" class="icono" aria-label="Cambiar a tema claro" title="Cambiar tema"></button>
+  </div>
+</header>
+<p class="advertencia">Herramienta de apoyo con fines académicos. No reemplaza el diagnóstico del radiólogo.</p>
+
+<main>
+  <!-- 1. Cargar -->
+  <section id="paso-cargar" class="paso activo" aria-labelledby="t-cargar">
+    <div class="cargar">
+      <h1 id="t-cargar">Cargar un estudio</h1>
+      <p class="sub">Resonancia lumbar con una serie <strong>T2 sagital</strong>: archivos .IMA o .dcm, la carpeta exportada del resonador o un .zip.</p>
+      <label class="zona" id="zona">
+        <svg width="44" height="44" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M12 4l-4 4M12 4l4 4M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <strong>Arrastra aquí los archivos o la carpeta del estudio</strong>
+        <span>o elige desde tu equipo</span>
+        <input type="file" id="in-archivos" multiple class="oculto-visual">
+      </label>
+      <div class="fila-botones centro">
+        <button type="button" class="secundario" id="btn-archivos">Elegir archivos</button>
+        <button type="button" class="secundario" id="btn-carpeta">Elegir carpeta</button>
+        <input type="file" id="in-carpeta" webkitdirectory multiple hidden>
+      </div>
+      <div id="seleccion" class="seleccion" hidden></div>
+      <ol id="progreso" class="progreso" hidden>
+        <li data-etapa="subida"><span>Subiendo archivos</span><progress max="1" value="0"></progress></li>
+        <li data-etapa="conversion"><span>Convirtiendo a PNG con el convertidor del dataset</span></li>
+        <li data-etapa="series"><span>Identificando la serie T2 sagital</span></li>
+      </ol>
+      <p id="cargar-error" class="error" role="alert" hidden></p>
+      <p class="privacidad">Los datos del paciente no se muestran ni se guardan: los DICOM se borran al convertirse y el estudio completo, a los 30 minutos.</p>
+    </div>
+  </section>
+
+  <!-- 2. Cortes -->
+  <section id="paso-cortes" class="paso" aria-labelledby="t-cortes">
+    <div class="dos-columnas">
+      <div class="col-visor">
+        <div id="visor-cortes"></div>
+        <div class="tira" id="tira" role="listbox" aria-label="Cortes de la serie" aria-multiselectable="true"></div>
+      </div>
+      <aside class="panel-lateral">
+        <h1 id="t-cortes">Elegir los cortes</h1>
+        <label class="campo">Serie<select id="sel-serie"></select></label>
+        <div id="serie-avisos"></div>
+        <div id="recomendacion" class="recomendacion"></div>
+        <div class="leyenda">
+          <span><b class="estrella">★</b> recomendado</span><span><i class="marca-sel"></i> elegido</span><span><i class="marca-lejos"></i> poco central</span>
+        </div>
+        <p class="ayuda">Rueda o ← → para recorrer · Espacio para elegir el corte visible · B muestra las cajas del detector</p>
+        <div class="fila-botones">
+          <button type="button" class="secundario" id="btn-recomendados">Usar recomendados</button>
+          <button type="button" class="secundario" id="btn-ninguno">Quitar todos</button>
+        </div>
+        <button type="button" class="principal ancho" id="btn-analizar" disabled>Analizar</button>
+        <p class="ayuda" id="analizar-info"></p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 3. Resultados -->
+  <section id="paso-resultados" class="paso" aria-labelledby="t-resultados">
+    <div class="dos-columnas resultados">
+      <div class="col-visor">
+        <div class="chips" id="chips-cortes" role="tablist" aria-label="Corte analizado"></div>
+        <div id="visor-resultados"></div>
+        <div class="leyenda clases"><span class="c-Normal">Normal</span><span class="c-Degeneracion_Discal">Degeneración</span><span class="c-Protrusion">Protrusión</span></div>
+      </div>
+      <aside class="panel-lateral">
+        <h1 id="t-resultados">Resultados</h1>
+        <div id="analisis-progreso" class="analisis-progreso" hidden></div>
+        <div id="conclusion" class="conclusion"></div>
+        <div id="discos" class="discos"></div>
+        <details class="tecnico"><summary>Detalle técnico por modelo</summary><div id="tecnico"></div></details>
+        <button type="button" class="principal ancho" id="btn-ir-informe" disabled>Preparar informe</button>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 4. Informe -->
+  <section id="paso-informe" class="paso" aria-labelledby="t-informe">
+    <div class="informe-grid">
+      <form id="form-informe" class="panel-lateral formulario" autocomplete="off"></form>
+      <div class="vista-hoja"><article id="hoja" class="hoja" aria-label="Vista previa del informe"></article></div>
+    </div>
+  </section>
+</main>
+
+<dialog id="dlg-imagen" aria-labelledby="t-imagen">
+  <div class="dlg-cabecera"><h2 id="t-imagen">Analizar una imagen</h2><button type="button" class="icono" data-cerrar aria-label="Cerrar">✕</button></div>
+  <p class="sub">Un recorte de un disco o un corte sagital completo (PNG o JPG en escala de grises).</p>
+  <label class="zona pequena" id="zona-imagen">
+    <strong>Arrastra la imagen aquí o haz clic para elegirla</strong>
+    <input type="file" id="in-imagen" accept="image/png,image/jpeg" class="oculto-visual">
+  </label>
+  <div id="imagen-resultado" class="imagen-resultado"></div>
+</dialog>
+
+<div id="avisos" class="avisos"></div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

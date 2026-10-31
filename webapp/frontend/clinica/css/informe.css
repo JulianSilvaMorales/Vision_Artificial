@@ -1,0 +1,56 @@
+/* Paso 4: formulario del radiologo y hoja del informe. La hoja siempre es papel blanco, tambien en tema oscuro. */
+.informe-grid { display: grid; grid-template-columns: 420px minmax(0, 1fr); flex: 1; min-height: 0; }
+.informe-grid .formulario { border-left: 0; border-right: 1px solid var(--borde); }
+.estado-informe { display: inline-block; font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--aviso-fondo); color: var(--aviso); margin: 0 0 12px; }
+.estado-informe.firmado { background: rgba(63, 185, 80, .15); color: var(--ok); }
+.campo-informe { margin-bottom: 14px; }
+.campo-informe .campo { margin-bottom: 4px; color: var(--texto); font-weight: 600; font-size: 13px; }
+.frases { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.frases button { background: var(--panel-2); border: 1px dashed var(--borde-fuerte); color: var(--suave); border-radius: 999px; padding: 3px 10px; font-size: 12px; cursor: pointer; }
+.frases button:hover { color: var(--texto); border-color: var(--acento); }
+.enlace { background: none; border: 0; color: var(--acento); text-decoration: underline; cursor: pointer; padding: 0; font: inherit; }
+.peligro { color: var(--error); }
+.peligro:hover:not(:disabled) { border-color: var(--error); }
+input:disabled, textarea:disabled { opacity: .7; }
+
+.vista-hoja { overflow: auto; padding: 28px; background: var(--fondo); }
+.hoja {
+  --Normal: #1a7f37; --Degeneracion_Discal: #9a6700; --Protrusion: #cf222e; --Otro: #6e40c9; --aviso: #9a6700;
+  --tinta: #1b2430; --gris: #57606a; --linea: #d8dee6;
+  width: 210mm; min-height: 297mm; margin: 0 auto; padding: 16mm 16mm 14mm; background: #fff; color: var(--tinta);
+  box-shadow: 0 6px 30px rgba(0, 0, 0, .35); font-size: 10.5pt; line-height: 1.45;
+}
+.hoja:empty { display: none; }
+.hoja-cab { display: flex; justify-content: space-between; border-bottom: 2px solid var(--tinta); padding-bottom: 6px; font-size: 10pt; color: var(--gris); }
+.hoja-cab strong { color: var(--tinta); }
+.hoja h2 { font-size: 15pt; margin: 12px 0 8px; }
+.hoja h3 { font-size: 10.5pt; margin: 12px 0 4px; text-transform: uppercase; letter-spacing: .04em; color: var(--gris); }
+.hoja p { margin: 0 0 6px; }
+.hoja .tenue { color: #8c959f; }
+.hoja-datos { display: grid; grid-template-columns: 130px 1fr; gap: 2px 12px; margin: 0 0 6px; }
+.hoja-datos dt { color: var(--gris); }
+.hoja-datos dd { margin: 0; }
+.hoja-tabla { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 9.5pt; }
+.hoja-tabla th, .hoja-tabla td { border-bottom: 1px solid var(--linea); padding: 4px 6px; text-align: left; vertical-align: top; }
+.hoja-tabla thead th { border-bottom: 1.5px solid var(--tinta); color: var(--gris); font-weight: 600; }
+.hoja-cuerpo { display: grid; grid-template-columns: 1fr 62mm; gap: 8mm; align-items: start; }
+.hoja-figura { margin: 12px 0 0; font-size: 8.5pt; color: var(--gris); }
+.hoja-img { position: relative; width: 100%; background: #000; border-radius: 4px; overflow: hidden; }
+.hoja-img img, .hoja-img svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hoja-pie { margin-top: 14mm; border-top: 1px solid var(--linea); padding-top: 6px; font-size: 8.5pt; color: var(--gris); }
+.hoja-pie .firma { font-size: 10.5pt; color: var(--tinta); margin-bottom: 6px; }
+.res-corte .hoja-img { border-radius: 8px; }
+
+@media (max-width: 1100px) {
+  .informe-grid { grid-template-columns: 1fr; overflow-y: auto; }
+  .hoja { transform-origin: top left; }
+}
+
+@media print {
+  @page { size: A4; margin: 0; }
+  body { background: #fff; display: block; }
+  .barra, .advertencia, .formulario, .avisos, dialog, .paso:not(#paso-informe) { display: none !important; }
+  main, #paso-informe, .informe-grid, .vista-hoja { display: block !important; padding: 0; overflow: visible; background: #fff; }
+  .hoja { box-shadow: none; margin: 0; width: auto; min-height: 0; }
+  .hoja-img, .hoja-img img { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
