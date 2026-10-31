@@ -1,0 +1,55 @@
+% =====================================================================
+% Seccion: Seleccion de los cuatro modelos (Hito 2)
+% Fragmento SIN preambulo: \input{secciones/seleccion_modelos}
+% Paquetes: booktabs, xcolor. Usa \cite con las claves de referencias_dataset.bib
+% Cifras de rendimiento: README.md y docs/resultados/ del repositorio.
+% =====================================================================
+\providecommand{\pendiente}[1]{\textcolor{red}{\textbf{[PENDIENTE: #1]}}}
+\providecommand{\arch}[1]{\texttt{\detokenize{#1}}}
+
+\section{Selección de los modelos}
+\label{sec:modelos}
+
+\subsection{Criterios de selección}
+La rúbrica pide cuatro modelos de aprendizaje automático acordes con la solución y respaldados por el estado del arte y el marco teórico. Se aplicaron cuatro criterios: (i) que sirvan para la tarea, clasificar un ROI de 128$\times$128~px en tres clases; (ii) que tengan antecedentes en resonancia lumbar o en tareas médicas comparables; (iii) que representen \emph{familias distintas}, para que la comparación diga algo; y (iv) que puedan entrenarse y evaluarse con la misma división por paciente y las mismas métricas, que es la condición para comparar con justicia.
+
+\subsection{Los cuatro modelos}
+\begin{table}[t]
+\centering\small
+\caption{Modelos seleccionados, su familia y su respaldo.}
+\label{tab:modelos}
+\begin{tabular}{p{0.04\linewidth}p{0.24\linewidth}p{0.26\linewidth}p{0.34\linewidth}}
+\toprule
+\# & Modelo & Familia & Respaldo principal \\
+\midrule
+1 & YOLOv8s-cls con ajuste fino & CNN de la familia YOLO & YOLO en resonancia lumbar \cite{diagnostics2023,frontiers2023,sayed2025,wang2025} \\
+2 & ResNet-50 con ajuste fino & CNN residual & ResNet-50 en columna lumbar \cite{sayed2025,alkubaisi2022} \\
+3 & SVM (núcleo RBF) sobre características de la ResNet-50 & Característica profunda + clasificador de margen & ResNet-50 + SVM sobre este mismo dataset \cite{sari2024}; embeddings + SVM \cite{khoiwal2024}; SVM en tabulares \cite{peerj2023} \\
+4 & Random Forest (300 árboles) sobre las mismas características & Característica profunda + \emph{ensemble} de árboles & Solo datos tabulares \cite{peerj2023}; es una extensión propia \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Modelo 1: YOLOv8s-cls.} La familia YOLO es la más usada en los trabajos revisados sobre resonancia lumbar: YOLOv5 sobre este mismo conjunto de datos \cite{diagnostics2023}, YOLOv5x, YOLOv6 y YOLOv7 en cortes sagitales \cite{frontiers2023}, una variante modificada para grado de degeneración y hernia con validación externa \cite{wang2025}, y un flujo en cascada con YOLOv11 para recortar los discos \cite{sayed2025}. Aquí se usa su variante de clasificación, preentrenada en ImageNet y ajustada con AdamW, capas iniciales congeladas y \emph{dropout}. Además es coherente con el resto del pipeline, que ya emplea YOLO para detectar los discos y para preetiquetar.
+
+\paragraph{Modelo 2: ResNet-50.} Es una red convolucional de otra familia (residual), de modo que la comparación con YOLO no es entre dos variantes de lo mismo. Se ajusta con congelado de las primeras capas, \emph{dropout} de 0,3 en la capa final, suavizado de etiquetas y parada temprana por F1 en validación. Tiene respaldo directo en clasificación de discos lumbares: ResNet-50 sobre cortes sagitales \cite{sayed2025} y transferencia desde ImageNet con ResNet-50 y otras redes \cite{alkubaisi2022}.
+
+\paragraph{Modelos 3 y 4: SVM y Random Forest sobre características profundas.} Un clasificador clásico no funciona bien sobre los píxeles crudos, porque trata cada valor por separado y no reconoce la forma. Por eso la ResNet-50 se usa como extractor: elimina su capa final y entrega 2\,048 valores por imagen, que se estandarizan, se reducen a 256 componentes con PCA y se clasifican con SVM de núcleo RBF o con un Random Forest de 300 árboles. El escalador y el PCA se ajustan solo con el entrenamiento, y los hiperparámetros se eligen con la validación. Esta técnica (características profundas más clasificador clásico) es de uso habitual; con este mismo conjunto de datos, ResNet-50 como extractor más SVM reportó 99,42\,\% en una tarea binaria con validación cruzada \cite{sari2024}, y los \emph{embeddings} congelados con SVM o regresión logística igualan a modelos entrenados desde cero en varias tareas médicas \cite{khoiwal2024}. Ambos modelos, además, corresponden a los temas de la asignatura (máquinas de vectores de soporte y árboles).
+
+\subsection{Alcance del respaldo}
+El respaldo no es igual de fuerte para los cuatro modelos, y conviene decirlo:
+\begin{itemize}
+  \item Los modelos 1 y 2 tienen antecedentes directos en resonancia lumbar.
+  \item El modelo 3 tiene antecedentes en el mismo conjunto de datos, pero en una tarea binaria y sin que se declare una división por paciente \cite{sari2024}; sirve como respaldo del método, no como meta de rendimiento.
+  \item El modelo 4 solo cuenta con la comparación de clasificadores sobre datos tabulares \cite{peerj2023}, donde el mejor resultado fue de un modelo SMOTE-RFE-XGBoost y SVM quedó entre los mejores. No se encontró un trabajo que aplique Random Forest sobre \emph{embeddings} de resonancia lumbar, así que se presenta como una extensión propia, justificada por la asignatura.
+  \item Los resultados altos de la literatura (por ejemplo 97--99\,\%) corresponden a conjuntos de prueba pequeños o a tareas binarias, y cifras internas altas bajan en validación externa \cite{yi2023}.
+\end{itemize}
+
+\subsection{Decisión de diseño sobre las características}
+El diseño inicial usaba la ResNet-50 con los pesos de ImageNet congelados, para que el SVM y el Random Forest no vieran características ajustadas con las etiquetas de entrenamiento. Al evaluarlo en validación, los modelos rindieron poco (exactitud de 77,6\,\% y 75,3\,\% en prueba de originales con \emph{embeddings} de ImageNet sin ajustar). Se adoptó entonces la ResNet-50 ajustada como extractor: el F1 en validación subió de 0,65 a 0,80 en el SVM y de 0,60 a 0,79 en el Random Forest. El costo es que los modelos 3 y 4 \emph{dependen} del modelo 2 y no son independientes de él; las características de entrenamiento están casi perfectamente separadas porque la red las vio ajustándose a sus etiquetas. Para limitar el riesgo, el escalador, el PCA y los clasificadores se ajustan solo con entrenamiento, y la validación y la prueba nunca intervienen en el ajuste. También se entrenaron regresión logística y KNN sobre las mismas características, como línea base del curso, que no cuentan entre los cuatro.
+
+\subsection{Métricas de comparación}
+Los cuatro modelos usan la misma división por paciente, la misma semilla (42) y las mismas métricas, calculadas sobre los originales de la partición de prueba, que se evalúa una sola vez: exactitud, precisión, \emph{recall} y F1 por clase y macro, exactitud balanceada, ROC-AUC macro (uno contra el resto) y pérdida logarítmica. La exactitud sola es engañosa con clases desbalanceadas (un clasificador que siempre dijera Protrusión acertaría cerca del 73\,\% de los originales), por eso se acompaña de F1 macro y \emph{recall} por clase \cite{alkubaisi2022}.
+
+\subsection{Aporte frente a lo existente}
+Según la revisión realizada, ninguno de los trabajos leídos combina a la vez (i) tres clases con una fusión declarada de abultamiento y protrusión, (ii) división por paciente con evaluación sobre originales, y (iii) la comparación de cuatro modelos (YOLO, ResNet, SVM y Random Forest) sobre el mismo conjunto de prueba y las mismas métricas. Es una afirmación sobre lo leído, no el resultado de una búsqueda exhaustiva.

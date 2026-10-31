@@ -1,0 +1,23 @@
+% Archivo principal minimo SOLO para compilar y revisar esta seccion por separado.
+% Para integrarla al informe: copiar los \input de las secciones, \graphicspath y los paquetes de abajo.
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}   % necesita el paquete de espanol de TeX Live / MiKTeX
+\usepackage{graphicx,booktabs,xcolor,caption,url}
+\usepackage{tikz,pgfplots}
+\usetikzlibrary{positioning,arrows.meta}
+\pgfplotsset{compat=1.16}
+\usepackage[margin=2.5cm]{geometry}
+\graphicspath{{../guias/}{figuras/}}
+
+\title{Preparación del dataset y selección de modelos (borrador Hito 2)}
+\date{}
+\begin{document}
+\maketitle
+\input{secciones/preparacion_dataset}
+\input{secciones/seleccion_modelos}
+
+\bibliographystyle{IEEEtran}   % si no lo tienes, usa plain
+\bibliography{referencias_dataset}
+\end{document}
