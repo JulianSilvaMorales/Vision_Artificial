@@ -48,14 +48,7 @@ Criterio de la época & exactitud en validación & F1 macro en validación \\
 \end{tabular}
 \end{table}
 
-\paragraph{SVM y Random Forest.} Con validación se eligió $C = 0{,}1$ para el SVM (núcleo RBF), que quedó con 1\,684 vectores de soporte de 24\,501 imágenes, y una profundidad máxima de 20 para el Random Forest de 300 árboles (Figura~\ref{fig:hiper}). Con PCA, 256 componentes explican el 80,0\,\% de la varianza de las características ajustadas.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\linewidth]{08_busqueda_hiperparametros.png}
-\caption{Búsqueda de hiperparámetros con la partición de validación.}
-\label{fig:hiper}
-\end{figure}
+\paragraph{SVM y Random Forest.} Con validación se eligió $C = 0{,}1$ para el SVM (núcleo RBF), que quedó con 1\,684 vectores de soporte de 24\,501 imágenes, y una profundidad máxima de 20 para el Random Forest de 300 árboles (Figura~\ref{mm:fig8}). Con PCA, 256 componentes explican el 80,0\,\% de la varianza de las características ajustadas.
 
 \subsection{Evidencia del entrenamiento}
 Las Figuras~\ref{fig:curvas1} y~\ref{fig:curvas2} son las curvas registradas. En las dos redes la mejor época es la 2: desde ahí la pérdida de entrenamiento sigue bajando y la de validación empeora. En la ResNet-50, el F1 macro de validación llegó a 0,824 en la época 2 y bajó en las siguientes, y la parada temprana detuvo el proceso en la época 6.
