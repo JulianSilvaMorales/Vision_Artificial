@@ -311,7 +311,7 @@ pred.predecir_todos("roi.png")                # los 4 modelos sobre la misma ima
 
 **Notebooks:** los cuadernos 00 y 01 se ejecutan en Google Colab con GPU. Usan Roboflow: la clave se guarda como secreto de Colab con el nombre `ROBOFLOW_API_KEY`; no se escribe en el cuaderno. Las variables a ajustar (rutas, workspace y proyecto) estan en las primeras celdas.
 
-**Backend y frontend:** por ahora, el MVP de demostracion ([Demo (MVP)](#demo-mvp) y [`webapp/README.md`](webapp/README.md)). La webapp formal esta pendiente.
+**Backend y frontend:** ver [Aplicacion web](#aplicacion-web) y [`webapp/README.md`](webapp/README.md).
 
 ## Flujo de trabajo con Git
 
