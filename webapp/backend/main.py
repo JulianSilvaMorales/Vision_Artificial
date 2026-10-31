@@ -11,6 +11,7 @@ servidor ya esta listo.
 
 Capas: api/routes (HTTP) -> schemas (validacion) -> services (logica) -> src/inference (modelos).
 """
+import asyncio
 import os
 import threading
 import webbrowser
@@ -50,7 +51,10 @@ async def ciclo_de_vida(_app):
     if url:
         # uvicorn empieza a aceptar conexiones justo despues de este punto
         threading.Timer(1.0, webbrowser.open, args=[url]).start()
+    limpieza = asyncio.create_task(estudios_service.limpieza_periodica())
     yield
+    limpieza.cancel()
+    estudios_service.limpiar_vencidos(0)       # al detener el servidor no quedan estudios en el disco
 
 
 app = FastAPI(title="DeepSpine · Apoyo al diagnostico lumbar",

@@ -167,6 +167,36 @@ def test_vencimiento_borra_estudios(estudio, tmp_path, monkeypatch):
     assert not carpeta.exists()
 
 
+def test_estudio_vencido_no_se_abre_aunque_la_limpieza_no_haya_pasado(estudio, tmp_path):
+    import os, time
+    viejo = time.time() - 3600
+    os.utime(tmp_path / estudio["id"], (viejo, viejo))
+    assert client.get(f"/api/estudios/{estudio['id']}").status_code == 404
+    assert not (tmp_path / estudio["id"]).exists()
+
+
+def test_limpieza_periodica_borra_sin_que_se_suba_otro_estudio(estudio, tmp_path, monkeypatch):
+    import asyncio, os, time
+    viejo = time.time() - 3600
+    os.utime(tmp_path / estudio["id"], (viejo, viejo))
+    monkeypatch.setattr(estudios_service, "ESTUDIO_LIMPIEZA_S", 0.01)
+
+    async def correr():
+        tarea = asyncio.create_task(estudios_service.limpieza_periodica())
+        await asyncio.sleep(0.2)
+        tarea.cancel()
+
+    asyncio.run(correr())
+    assert not (tmp_path / estudio["id"]).exists()
+
+
+def test_estudio_en_uso_no_vence_y_al_detener_el_servidor_se_borra(estudio, tmp_path):
+    estudios_service.limpiar_vencidos()
+    assert client.get(f"/api/estudios/{estudio['id']}").status_code == 200
+    estudios_service.limpiar_vencidos(0)
+    assert not (tmp_path / estudio["id"]).exists()
+
+
 def roi_falso(conf=0.9):
     return dict(confianza=conf, caja=[0, 0, 10, 10], roi=np.zeros((128, 128), np.uint8))
 

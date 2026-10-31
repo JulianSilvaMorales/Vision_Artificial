@@ -116,7 +116,7 @@ async function descargarPNG() {
     const url = URL.createObjectURL(await r.blob());
     Object.assign(document.createElement("a"), { href: url, download: "cortes.zip" }).click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-  } catch (e) { avisar(`No se pudieron descargar los cortes (${e.message}). El estudio se borra a los 30 minutos.`, "error"); }
+  } catch (e) { avisar(`No se pudieron descargar los cortes (${e.message}). El estudio se borra tras 30 minutos sin usarse.`, "error"); }
 }
 
 async function borrarEstudio() {

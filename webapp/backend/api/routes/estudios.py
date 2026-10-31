@@ -27,7 +27,7 @@ def _exigir_modelos():
 @router.post("")
 async def subir(archivos: List[UploadFile] = File(...)):
     """Sube los .IMA / .dcm (o un .zip con ellos), los convierte a PNG y devuelve las series con sus cortes.
-    Los DICOM se borran al convertirlos; el estudio completo se borra solo a los 30 minutos."""
+    Los DICOM se borran al convertirlos; el estudio completo se borra solo tras 30 minutos sin usarse."""
     leidos = [(a.filename or "archivo", await a.read(ESTUDIO_MAX_BYTES + 1)) for a in archivos]
     return await run_in_threadpool(estudios_service.crear, leidos)
 

@@ -7,9 +7,10 @@ Flujo (cada paso reutiliza el codigo de scripts/, el mismo que limpio el dataset
   -> Predictor.trazar() sobre cada ROI.
 
 Privacidad: los DICOM se borran apenas se convierten; solo quedan los PNG, que no llevan datos del paciente, y el
-estudio completo se borra solo a los ESTUDIO_TTL_MIN minutos. Nunca se devuelven ni se registran nombre, fecha de
+estudio completo se borra solo tras ESTUDIO_TTL_MIN minutos sin usarse o al detener el servidor. Nunca se devuelven ni se registran nombre, fecha de
 nacimiento ni identificadores.
 """
+import asyncio
 import io
 import json
 import shutil
@@ -23,8 +24,8 @@ import cv2
 import numpy as np
 import pydicom
 
-from webapp.backend.core.config import (DETECTOR_PT, ESTUDIO_MAX_ARCHIVOS, ESTUDIO_MAX_BYTES, ESTUDIO_TTL_MIN,
-                                        ESTUDIOS_DIR)
+from webapp.backend.core.config import (DETECTOR_PT, ESTUDIO_LIMPIEZA_S, ESTUDIO_MAX_ARCHIVOS, ESTUDIO_MAX_BYTES,
+                                        ESTUDIO_TTL_MIN, ESTUDIOS_DIR)
 from webapp.backend.services import prediccion_service
 from webapp.backend.services.validacion_service import ImagenRechazada
 from webapp.backend.utils.imagenes import a_base64_png
@@ -51,16 +52,30 @@ def _dir(id_estudio):
     d = ESTUDIOS_DIR / id_estudio
     if not (d / "estudio.json").exists():
         raise EstudioError("Estudio no encontrado o vencido", 404)
+    if d.stat().st_mtime < time.time() - ESTUDIO_TTL_MIN * 60:      # vencido aunque la limpieza aun no haya pasado
+        shutil.rmtree(d, ignore_errors=True)
+        raise EstudioError("Estudio no encontrado o vencido", 404)
     return d
 
 
-def limpiar_vencidos():
+def limpiar_vencidos(ttl_min=ESTUDIO_TTL_MIN):
+    """Borra los estudios sin usar desde hace `ttl_min` minutos; con 0 borra todos (al detener el servidor)."""
     if not ESTUDIOS_DIR.exists():
         return
-    limite = time.time() - ESTUDIO_TTL_MIN * 60
+    limite = time.time() - ttl_min * 60
     for d in ESTUDIOS_DIR.iterdir():
-        if d.is_dir() and d.stat().st_mtime < limite:
-            shutil.rmtree(d, ignore_errors=True)
+        try:
+            if d.is_dir() and d.stat().st_mtime < limite:
+                shutil.rmtree(d, ignore_errors=True)
+        except OSError:          # otra peticion lo acaba de borrar
+            continue
+
+
+async def limpieza_periodica():
+    """Corre mientras el servidor este activo, para que un estudio se borre aunque nadie suba otro."""
+    while True:
+        await asyncio.sleep(ESTUDIO_LIMPIEZA_S)
+        await asyncio.to_thread(limpiar_vencidos)
 
 
 def borrar(id_estudio):
