@@ -31,7 +31,7 @@ export function subirEstudio(archivos, alAvanzar) {
       if (x.status >= 200 && x.status < 300) resolver(j);
       else rechazar(new Error(typeof j.detail === "string" ? j.detail : `Error ${x.status} del servidor`));
     };
-    x.onerror = () => rechazar(new Error("Sin conexión con el servidor. Revisa que la ventana de iniciar_mvp siga abierta."));
+    x.onerror = () => rechazar(new Error("Sin conexión con el servidor. Revisa que la ventana de iniciar_app siga abierta."));
     x.send(datos);
   });
 }

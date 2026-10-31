@@ -1,6 +1,6 @@
 """Pruebas del backend de la webapp: rechazo de imagenes, estudios de resonancia y votos del Random Forest.
 
-Las pruebas que necesitan los pesos de models/ o las imagenes de data/demo (Git LFS) se saltan si faltan.
+Las pruebas que necesitan los pesos de models/ se saltan si faltan.
 Ejecutar desde la raiz del repo:  python -m pytest tests -q
 """
 import datetime
@@ -167,6 +167,36 @@ def test_vencimiento_borra_estudios(estudio, tmp_path, monkeypatch):
     assert not carpeta.exists()
 
 
+def test_estudio_vencido_no_se_abre_aunque_la_limpieza_no_haya_pasado(estudio, tmp_path):
+    import os, time
+    viejo = time.time() - 3600
+    os.utime(tmp_path / estudio["id"], (viejo, viejo))
+    assert client.get(f"/api/estudios/{estudio['id']}").status_code == 404
+    assert not (tmp_path / estudio["id"]).exists()
+
+
+def test_limpieza_periodica_borra_sin_que_se_suba_otro_estudio(estudio, tmp_path, monkeypatch):
+    import asyncio, os, time
+    viejo = time.time() - 3600
+    os.utime(tmp_path / estudio["id"], (viejo, viejo))
+    monkeypatch.setattr(estudios_service, "ESTUDIO_LIMPIEZA_S", 0.01)
+
+    async def correr():
+        tarea = asyncio.create_task(estudios_service.limpieza_periodica())
+        await asyncio.sleep(0.2)
+        tarea.cancel()
+
+    asyncio.run(correr())
+    assert not (tmp_path / estudio["id"]).exists()
+
+
+def test_estudio_en_uso_no_vence_y_al_detener_el_servidor_se_borra(estudio, tmp_path):
+    estudios_service.limpiar_vencidos()
+    assert client.get(f"/api/estudios/{estudio['id']}").status_code == 200
+    estudios_service.limpiar_vencidos(0)
+    assert not (tmp_path / estudio["id"]).exists()
+
+
 def roi_falso(conf=0.9):
     return dict(confianza=conf, caja=[0, 0, 10, 10], roi=np.zeros((128, 128), np.uint8))
 
@@ -245,15 +275,6 @@ def test_imagen_en_gris_y_en_color_dan_lo_mismo_tras_pasar_a_gris():
     g = np.random.default_rng(2).integers(0, 255, (128, 128), dtype=np.uint8)
     a = np.asarray(abrir_imagen(Image.fromarray(g)))
     assert a.shape == (128, 128, 3) and (a[..., 0] == g).all() and (a[..., 1] == g).all()
-
-
-@pytest.mark.skipif(not (hay_modelos and modelos_service.imagenes_demo_ok()), reason="faltan modelos o imagenes demo (Git LFS)")
-def test_los_45_casos_demo_se_reproducen_y_pasan_el_rechazo():
-    for caso in client.get("/api/casos").json():
-        r = client.post(f"/api/casos/{caso['id']}/predecir")
-        assert r.status_code == 200 and all(c["coincide_con_registrada"] for c in r.json()["comparacion"])
-        with open(f"data/demo/imagenes/{caso['archivo']}", "rb") as f:
-            assert subir_imagen(f.read()).status_code == 200            # un ROI real no debe rechazarse
 
 
 @sin_modelos
@@ -340,17 +361,22 @@ def test_puntuar_sin_columna_no_recomienda_nada(estudio, monkeypatch):
     assert r.json()["cortes"][0]["motivo"] == "solo 0 de 5 discos detectados"
 
 
-# ---------- paginas: aplicacion en la raiz y demo en /mvp ----------
-def test_raiz_sirve_la_app_y_mvp_la_demo():
+# ---------- paginas ----------
+def test_raiz_sirve_la_app():
     r = client.get("/")
     assert r.status_code == 200 and "Apoyo al diagnóstico lumbar" in r.text and 'src="js/main.js"' in r.text
-    r = client.get("/mvp", follow_redirects=False)
-    assert r.status_code in (301, 302, 307, 308) and r.headers["location"] == "/mvp/"
-    r = client.get("/mvp/")
-    assert r.status_code == 200 and "MVP de demostración" in r.text
+
+
+def test_rutas_del_mvp_retiradas():
+    for ruta in ("/mvp/", "/api/casos", "/api/modelos", "/resultados/README.md"):
+        assert client.get(ruta).status_code == 404, ruta
 
 
 def test_paginas_sin_cache():
-    for ruta in ("/", "/js/main.js", "/css/base.css", "/mvp/app.js"):
+    for ruta in ("/", "/js/main.js", "/css/base.css"):
         r = client.get(ruta)
         assert r.status_code == 200 and r.headers["cache-control"] == "no-cache", ruta
+
+
+def test_salud_no_depende_de_los_casos_demo():
+    assert set(client.get("/api/salud").json()) == {"estado", "dispositivo", "commit", "detector_ok", "modelos_disponibles", "faltan"}

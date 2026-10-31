@@ -7,6 +7,7 @@ import { habilitar, hecho, irA } from "./nav.js";
 import { cajasSVG, crearVisor } from "./visor.js";
 
 let visor, verCorte = null, activo = null;
+let corrida = 0;      // cada analisis tiene su numero: uno viejo que sigue en curso ya no escribe resultados
 const ESTADO_TXT = { no_evaluable: "No evaluable", mixto: "No concluyente" };
 const CONF_TXT = { alta: "Confianza alta", media: "Confianza media", baja: "Confianza baja" };
 
@@ -18,6 +19,7 @@ function colorNivel(c, n) {
 }
 
 export async function analizar(cortes) {
+  const esta = ++corrida, id = E.estudio.id, serie = E.serie;
   E.resultados = []; E.valoracion = {}; activo = null; verCorte = null;
   document.dispatchEvent(new CustomEvent("analisis-nuevo"));
   habilitar("resultados"); hecho("cortes"); habilitar("informe", false); hecho("resultados", false);
@@ -29,7 +31,8 @@ export async function analizar(cortes) {
   try {
     for (const [i, n] of cortes.entries()) {
       prog.innerHTML = `<span>Analizando el corte ${n + 1} (${i + 1} de ${cortes.length})…</span><progress max="${cortes.length}" value="${i}"></progress>`;
-      const r = await postJSON(`/api/estudios/${E.estudio.id}/predecir`, { serie: E.serie, cortes: [n] });
+      const r = await postJSON(`/api/estudios/${id}/predecir`, { serie, cortes: [n] });
+      if (esta !== corrida) return;
       E.resultados.push(r.cortes[0]);
       if (verCorte === null) verCorte = 0;
       pintar();
@@ -39,6 +42,7 @@ export async function analizar(cortes) {
     habilitar("informe"); hecho("resultados");
     avisar("Análisis terminado.", "ok");
   } catch (e) {
+    if (esta !== corrida) return;
     prog.innerHTML = `<p class="error">No se pudo analizar: ${esc(e.message)}</p>`;
   }
 }
@@ -101,11 +105,16 @@ function tarjeta(r) {
   </article>`;
 }
 
+// La capa 3 del rechazo solo actua con models/umbral_rechazo.json vigente
+const sinFiltro = () => E.resultados.some((c) => Object.values(c.niveles).some((d) =>
+  ["sin_umbral", "umbral_obsoleto"].includes(d.traza?.pasos?.validacion?.capa3)));
+
 function pintarDiscos() {
   if (!E.resultados.length) { $("#conclusion").innerHTML = ""; $("#discos").innerHTML = ""; return; }
   const res = resumenEstudio(E.resultados);
   $("#conclusion").innerHTML = `<h2>Conclusión</h2><p>${esc(fraseGeneral(res, E.resultados))}</p>
-    <p class="ayuda">Clase del ensamble de los 4 modelos en cada corte. Haz clic en un disco para ver sus recortes y resaltarlo en la imagen.</p>`;
+    <p class="ayuda">Clase del ensamble de los 4 modelos en cada corte. La confianza es orientativa: una regla fija según cuántos cortes y modelos coinciden, no una probabilidad calibrada. Haz clic en un disco para ver sus recortes y resaltarlo en la imagen.</p>
+    ${sinFiltro() ? `<p class="alerta">El filtro de recortes atípicos no está calibrado: un disco muy distinto a los del entrenamiento no se descarta.</p>` : ""}`;
   $("#discos").innerHTML = res.map(tarjeta).join("");
   $$("#discos .disco-cab").forEach((b) => b.addEventListener("click", () => {
     const n = b.closest(".disco").dataset.nivel;
@@ -152,5 +161,12 @@ export function iniciarResultados() {
   visor = crearVisor($("#visor-resultados"));
   visor.vacio("Elige cortes y pulsa Analizar");
   $("#btn-ir-informe").addEventListener("click", () => irA("informe"));
-  document.addEventListener("serie-nueva", () => { E.resultados = []; verCorte = null; activo = null; pintar(); visor.vacio("Elige cortes y pulsa Analizar"); });
+  document.addEventListener("serie-nueva", () => {
+    corrida += 1;           // cancela el analisis en curso: era de la serie o del estudio anterior
+    E.resultados = []; verCorte = null; activo = null;
+    $("#analisis-progreso").hidden = true;
+    $("#btn-ir-informe").disabled = true;
+    habilitar("resultados", false); habilitar("informe", false); hecho("cortes", false); hecho("resultados", false);
+    pintar(); visor.vacio("Elige cortes y pulsa Analizar");
+  });
 }

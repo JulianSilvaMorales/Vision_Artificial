@@ -33,7 +33,7 @@
     <button type="button" id="btn-tema" class="icono" aria-label="Cambiar a tema claro" title="Cambiar tema"></button>
   </div>
 </header>
-<p class="advertencia">Herramienta de apoyo con fines académicos. No reemplaza el diagnóstico del radiólogo.</p>
+<p class="advertencia">Herramienta académica, no diagnóstica. Las etiquetas de entrenamiento las asignaron estudiantes, sin radiólogo; la decisión es del radiólogo.</p>
 
 <main>
   <!-- 1. Cargar -->
@@ -59,7 +59,7 @@
         <li data-etapa="series"><span>Identificando la serie T2 sagital</span></li>
       </ol>
       <p id="cargar-error" class="error" role="alert" hidden></p>
-      <p class="privacidad">Los datos del paciente no se muestran ni se guardan: los DICOM se borran al convertirse y el estudio completo, a los 30 minutos.</p>
+      <p class="privacidad">Los datos del paciente no se muestran ni se guardan: los DICOM se borran al convertirse y el estudio completo, tras 30 minutos sin usarse o al detener el servidor.</p>
     </div>
   </section>
 
@@ -125,6 +125,15 @@
     <input type="file" id="in-imagen" accept="image/png,image/jpeg" class="oculto-visual">
   </label>
   <div id="imagen-resultado" class="imagen-resultado"></div>
+</dialog>
+
+<dialog id="dlg-confirmar" aria-labelledby="confirmar-titulo" aria-describedby="confirmar-texto">
+  <h2 id="confirmar-titulo"></h2>
+  <p id="confirmar-texto" class="sub"></p>
+  <form method="dialog" class="fila-botones acciones-dialogo">
+    <button class="secundario" value="no">Cancelar</button>
+    <button id="confirmar-si" value="si"></button>
+  </form>
 </dialog>
 
 <div id="avisos" class="avisos"></div>

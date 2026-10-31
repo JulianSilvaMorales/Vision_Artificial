@@ -1,30 +1,30 @@
-# webapp · DeepSpine (aplicación para el radiólogo y demo del MVP)
+# webapp · DeepSpine
 
-Un solo servidor sirve dos páginas:
+Aplicación final para el radiólogo. Se ejecuta en local, en **Windows, Linux o macOS**, sin GPU: FastAPI sirve la API de los 4 modelos y la interfaz de `frontend/clinica/` (HTML, CSS y JavaScript, sin compilación ni dependencias). Se eligió esta tecnología en lugar de React porque arranca con un solo comando y funciona sin internet después de la primera instalación.
 
-| Dirección | Qué es |
-|---|---|
-| **http://127.0.0.1:8000/** | **Aplicación para el radiólogo** (`frontend/clinica/`): cargar un estudio, elegir los cortes centrales, resultados por disco e informe imprimible con sus observaciones. Es la que abre `iniciar_mvp.bat` |
-| **http://127.0.0.1:8000/mvp** | **Demo del MVP** (`frontend/mvp/`): casos de test, simulación, modelos y métricas. Para mostrar la evaluación a la docente |
+> Herramienta académica, no diagnóstica. Las etiquetas de entrenamiento las asignaron estudiantes, sin radiólogo.
 
-## Aplicación para el radiólogo
+Las métricas de los modelos no se muestran en la aplicación: están en [`docs/resultados/`](../docs/resultados/README.md).
+
+## Flujo de la aplicación
 
 Cuatro pasos, en tema oscuro (se cambia a claro con el botón de la barra; se recuerda en ese navegador):
 
-1. **Cargar:** arrastra los `.IMA` / `.dcm`, la carpeta exportada del resonador o un `.zip`. Lo que no es un corte (`DICOMDIR`, visores, imágenes) se descarta antes de subir.
-2. **Cortes:** visor con brillo y contraste (arrastrar), zoom, cajas del detector (B) y la tira de miniaturas. El detector recomienda los 3 cortes más centrales (★) y quedan elegidos; el radiólogo puede cambiarlos.
-3. **Resultados:** conclusión en lenguaje natural y una tarjeta por disco con la clase, en cuántos cortes se repite, cuántos votos de los modelos coinciden y una confianza orientativa. En cada disco el radiólogo marca *Concuerdo* o *Discrepo* (con la clase que ve y una nota). El detalle por modelo queda plegado.
+1. **Cargar:** arrastra los `.IMA` / `.dcm`, la carpeta exportada del resonador o un `.zip`. Lo que no es un corte (`DICOMDIR`, visores, imágenes) se descarta antes de subir. La subida empieza al elegir o soltar los archivos.
+2. **Cortes:** visor con brillo y contraste (arrastrar), zoom, cajas del detector (B) y tira de miniaturas. El detector recomienda los 3 cortes más centrales (★) y quedan elegidos; el radiólogo puede cambiarlos.
+3. **Resultados:** conclusión en lenguaje natural y una tarjeta por disco con la clase del ensamble, en cuántos cortes se repite, cuántos votos de los modelos coinciden y una confianza orientativa. En cada disco el radiólogo marca *Concuerdo* o *Discrepo* (con la clase que ve y una nota). El detalle por modelo queda plegado.
 4. **Informe:** hallazgos, impresión, recomendación y nombre del radiólogo, con frases rápidas. *Finalizar informe* bloquea el texto y agrega la firma; *Editar* la quita. Se imprime o guarda como PDF (A4) desde el navegador.
-
-Las observaciones del radiólogo no se envían al servidor: se guardan como borrador en ese navegador y en el PDF que se imprima. Si se recarga la página, el estudio, el análisis y el borrador se recuperan mientras el estudio siga en el servidor (30 minutos).
 
 El atajo **Analizar una imagen** (barra superior) clasifica un recorte de disco o un corte completo suelto.
 
-## Demo del MVP (/mvp)
+La recomendación de cortes y la confianza son reglas fijas de apoyo, sin validación clínica ni calibración.
 
-> **TEMPORAL.** MVP solo para la entrega del Hito 2 (2026-10-30): demuestra la **simulación de resultados** y la **trazabilidad** de los 4 modelos. **No es la webapp final.** La webapp formal (backend ordenado y frontend en React) la desarrolla Juan Manuel Tengonó a partir de esta API. Cuando funcione, **hay que borrar los archivos temporales del MVP** y reescribir este documento (ver [qué borrar y qué conservar](#qué-borrar-y-qué-conservar)).
+## Privacidad
 
-Se ejecuta en local, en **Windows, Linux o macOS**, sin GPU. No hace falta desplegarlo ni tener el dataset de 35k: usa 45 casos de test incluidos en el repo (`data/demo/`) y los pesos de los 4 modelos del [GitHub Release `modelos-v1.0`](https://github.com/JulianSilvaMorales/Vision_Artificial/releases/tag/modelos-v1.0).
+- Los DICOM se borran apenas se convierten a PNG. Nombre, fecha de nacimiento e identificadores nunca se devuelven ni se registran.
+- Los PNG quedan en una carpeta temporal del equipo (`DEEPSPINE_ESTUDIOS`). Un estudio se borra tras **30 minutos sin usarse**: una limpieza revisa cada minuto mientras el servidor esté activo. También se borran todos al detener el servidor con `Ctrl + C`.
+- Si la ventana del servidor se cierra de golpe o el equipo se apaga, la limpieza no alcanza a correr: lo pendiente se borra al arrancar de nuevo si ya venció.
+- Las observaciones del radiólogo no se envían al servidor: quedan como borrador en ese navegador y en el PDF que se imprima. No hay que escribir datos que identifiquen al paciente. Si se recarga la página, el estudio, el análisis y el borrador se recuperan mientras el estudio siga en el servidor.
 
 ## Guía rápida de arranque
 
@@ -33,8 +33,8 @@ Se ejecuta en local, en **Windows, Linux o macOS**, sin GPU. No hace falta despl
 | Programa | Para qué | Cómo comprobarlo |
 |---|---|---|
 | **Git** | Clonar el repositorio | `git --version` |
-| **Git LFS** | Descargar las imágenes de `data/demo/` (sin Git LFS llegan como archivos de texto y la demo avisa del error) | `git lfs version` |
-| **Python 3.12 o superior** (probado con 3.12 en Ubuntu y 3.14 en Windows) | Ejecutar el backend y los modelos | `python --version` (Windows) o `python3 --version` |
+| **Git LFS** | Descargar el detector de discos (`models/best_disc_detector.pt`) | `git lfs version` |
+| **Python 3.12 a 3.14** | Ejecutar el backend y los modelos | `python --version` (Windows) o `python3 --version` |
 | Internet, la primera vez | Instalar dependencias (~1 GB con PyTorch) y descargar los modelos (~121 MB) | — |
 
 Instalación:
@@ -55,23 +55,23 @@ cd Vision_Artificial
 
 | Sistema | Comando (desde la raíz del repo) |
 |---|---|
-| **Windows** | `webapp\iniciar_mvp.bat`, o doble clic en `webapp/iniciar_mvp.bat` |
-| **Linux / macOS / WSL** | `bash webapp/iniciar_mvp.sh` |
+| **Windows** | `webapp\iniciar_app.bat`, o doble clic en `webapp/iniciar_app.bat` |
+| **Linux / macOS / WSL** | `bash webapp/iniciar_app.sh` |
 
 El script hace todo en orden:
-1. Crea un entorno virtual `.venv-mvp/` en la raíz del repo (solo la primera vez).
-2. Instala `webapp/backend/requirements.txt` (solo la primera vez; tarda varios minutos).
-3. Ejecuta `git lfs pull` para traer las imágenes de demostración, y `scripts/descargar_modelos.py` para bajar los 4 pesos a `models/` y verificar su SHA-256. Si ya están, no los vuelve a descargar.
-4. Levanta el servidor, que primero carga los 4 modelos (unos segundos), y en Windows abre el navegador en **http://127.0.0.1:8000** cuando ya está listo. Es lo mismo que `http://localhost:8000`.
+1. Crea un entorno virtual `.venv-app/` en la raíz del repo (solo la primera vez).
+2. Instala `webapp/backend/requirements.txt` (solo la primera vez o si cambia; tarda varios minutos).
+3. Ejecuta `git lfs pull` para traer el detector de discos, y `scripts/descargar_modelos.py` para bajar los 4 pesos a `models/` y verificar su SHA-256. Si ya están, no los vuelve a descargar.
+4. Levanta el servidor, que primero carga los modelos (unos segundos), y en Windows abre el navegador en **http://127.0.0.1:8000** cuando ya está listo. Es lo mismo que `http://localhost:8000`.
 
-Las siguientes veces solo hace los pasos 3 y 4, en unos segundos. Para detener el servidor: `Ctrl + C` en la terminal.
+Las siguientes veces solo hace los pasos 3 y 4, en unos segundos y sin internet. Para detener el servidor: `Ctrl + C` en la terminal.
 
 ### 4. Paso a paso manual (si prefieres no usar el script)
 
 Windows (PowerShell o CMD):
 ```
-python -m venv .venv-mvp
-.venv-mvp\Scripts\activate
+python -m venv .venv-app
+.venv-app\Scripts\activate
 pip install -r webapp\backend\requirements.txt
 git lfs pull
 python scripts\descargar_modelos.py
@@ -80,82 +80,53 @@ python -m uvicorn webapp.backend.main:app --port 8000
 
 Linux / macOS / WSL:
 ```
-python3 -m venv .venv-mvp
-source .venv-mvp/bin/activate
+python3 -m venv .venv-app
+source .venv-app/bin/activate
 pip install -r webapp/backend/requirements.txt
 git lfs pull
 python scripts/descargar_modelos.py
 python -m uvicorn webapp.backend.main:app --port 8000
 ```
 
-Abrir **http://127.0.0.1:8000** (o `http://localhost:8000`) cuando la terminal diga `Application startup complete`; la demo está en **http://127.0.0.1:8000/mvp**. La documentación interactiva de la API está en **http://127.0.0.1:8000/docs**.
+Abrir **http://127.0.0.1:8000** cuando la terminal diga `Application startup complete`. La documentación interactiva de la API está en **http://127.0.0.1:8000/docs**.
 
 ### 5. Comprobar que todo está bien
-La barra superior de la aplicación debe decir **"Sistema listo · CPU"** con un punto verde, y la de la demo (`/mvp`) **"4 modelos cargables · CPU · commit … · 45 casos"** en verde. Si está en rojo, dice qué falta. También se puede consultar `http://localhost:8000/api/salud`.
+
+La barra superior debe decir **"Sistema listo · CPU"** con un punto verde. Si está en rojo, dice qué falta. También se puede consultar `http://localhost:8000/api/salud`.
 
 ### Problemas frecuentes
 
 | Síntoma | Causa | Solución |
 |---|---|---|
 | Barra roja: *"Faltan modelos"* | No se descargaron los pesos | `python scripts/descargar_modelos.py` (necesita internet) |
-| Barra roja: *"Las imágenes de data/demo no se descargaron"*, o miniaturas rotas | Se clonó sin Git LFS | `git lfs install` y luego `git lfs pull` |
+| Barra roja: *"Falta el detector de discos"* | El detector llegó como puntero de Git LFS | `git lfs install` y `git lfs pull` |
 | `ERROR: SHA-256 no coincide` al descargar | Descarga corrupta o incompleta | Volver a ejecutar el script; borra el archivo malo solo |
 | Error al cargar `svm.joblib` o `random_forest.joblib` | Otra versión de scikit-learn | Debe ser la 1.9.1: `pip install scikit-learn==1.9.1` |
 | `[Errno 98]` / `10048`: el puerto está en uso | Ya hay algo en el 8000 | Usar otro puerto: `... uvicorn webapp.backend.main:app --port 8001` |
 | `ModuleNotFoundError: No module named 'webapp'` o `'src'` | Se ejecutó desde otra carpeta | Ejecutar desde la **raíz** del repo |
-| El navegador dice *"localhost rechazó la conexión"* | Se abrió antes de que el servidor terminara de cargar los modelos | Esperar a que la terminal diga `Application startup complete` y recargar. Los scripts ya abren el navegador solo cuando el servidor está listo |
-| La simulación de 45 casos tarda minutos | CPU lenta, o portátil con batería en modo de ahorro | Conectar el cargador y poner Windows en "Mejor rendimiento". Referencia: ~6 s en un i5-12400 de escritorio; en un portátil con batería se midieron ~155 s |
-| Queremos usarlo sin internet (en clase) | — | Después de la primera ejecución funciona sin conexión: los scripts no reinstalan nada, los modelos se verifican en local ("OK (ya estaba)") y la página no usa recursos externos. Probarlo antes con el wifi apagado |
-| `pip` no encuentra `torch` para tu versión de Python | Python demasiado viejo o demasiado nuevo | Usar Python 3.12 a 3.14 |
-| Windows: `OSError: [Errno 2] No such file or directory: ...torch\include\...` al instalar | El repo está en una ruta muy larga y Windows limita las rutas a 260 caracteres | Clonar en una ruta corta (por ejemplo `C:\Users\<usuario>\Documents\Vision_Artificial`) o activar las rutas largas de Windows |
-| La pestaña 5 dice *"Falta models/best_disc_detector.pt"* | El detector llegó como puntero de Git LFS | `git lfs install` y `git lfs pull` |
-| Pestaña 5: *"No se pudo convertir ningún corte a PNG"* en Windows | `cv2.imwrite` no escribe en rutas con tildes o símbolos, y la carpeta temporal del usuario las tiene | Definir `DEEPSPINE_ESTUDIOS` con una ruta simple, por ejemplo `set DEEPSPINE_ESTUDIOS=C:\deepspine_tmp` |
-| Pestaña 5: el detector halla pocos discos | Los cortes no son midsagitales, o el equipo es muy distinto al de entrenamiento | Elegir cortes del centro del volumen; ver el aviso de equipo en la pestaña |
-| Usas el mismo clon desde Windows y desde WSL | El `.venv-mvp` de un sistema no sirve en el otro | En WSL: `MVP_VENV=.venv-mvp-linux bash webapp/iniciar_mvp.sh` |
+| El navegador dice *"localhost rechazó la conexión"* | Se abrió antes de que el servidor terminara de cargar los modelos | Esperar a que la terminal diga `Application startup complete` y recargar |
+| *"No se pudo convertir ningún corte a PNG"* en Windows | `cv2.imwrite` no escribe en rutas con tildes o símbolos, y la carpeta temporal del usuario las tiene | Definir `DEEPSPINE_ESTUDIOS` con una ruta simple, por ejemplo `set DEEPSPINE_ESTUDIOS=C:\deepspine_tmp` |
+| El detector halla pocos discos | Los cortes no son midsagitales, o el equipo es muy distinto al de entrenamiento | Elegir cortes del centro del volumen; ver el aviso de equipo en el paso Cortes |
+| Windows: `OSError: [Errno 2] No such file or directory: ...torch\include\...` al instalar | El repo está en una ruta muy larga y Windows limita las rutas a 260 caracteres | Clonar en una ruta corta o activar las rutas largas de Windows |
+| Usas el mismo clon desde Windows y desde WSL | El `.venv-app` de un sistema no sirve en el otro | En WSL: `DEEPSPINE_VENV=.venv-app-linux bash webapp/iniciar_app.sh` |
 
 Opcional: con GPU NVIDIA y PyTorch con CUDA, `DEEPSPINE_DISPOSITIVO=cuda` usa la GPU. En CPU (por defecto) las predicciones reproducen exactamente la evaluación oficial; en GPU la ResNet usa otra precisión numérica y algún caso límite puede cambiar.
 
 ## Rechazo de imágenes que no son de columna
 
-Los 4 modelos siempre eligen una de las 3 clases, así que antes de predecir se filtran las imágenes subidas (`services/validacion_service.py`):
+Los 4 modelos siempre eligen una de las 3 clases, así que antes de predecir se filtran las imágenes (`services/validacion_service.py`):
 
 1. **Formato:** se rechazan las imágenes en color, diminutas o con proporciones raras (`422`, `capa 1`).
-2. **Tipo:** casi cuadrada y de hasta 256 px = ROI; más grande o alargada = corte completo, que va al detector de discos y solo se acepta si halla al menos 3 niveles en orden (`capa 2`).
-3. **Fuera de distribución:** distancia de Mahalanobis del embedding de la ResNet-50 en el espacio PCA del SVM, contra un umbral calibrado. **Esta capa solo actúa si existe `models/umbral_rechazo.json`**; sin él la API lo indica en `pasos.validacion.capa3 = "sin_umbral"`. Se genera una vez con los ROI de validación (no están en el repo, ver `data/processed/README.md`):
+2. **Tipo:** casi cuadrada y de hasta 256 px = recorte de disco; más grande o alargada = corte completo, que va al detector y solo se acepta si halla al menos 3 niveles en orden (`capa 2`).
+3. **Fuera de distribución:** distancia de Mahalanobis del embedding de la ResNet-50 en el espacio PCA del SVM, contra un umbral calibrado.
+
+**La capa 3 todavía no está activa:** solo actúa si existe `models/umbral_rechazo.json`, y la aplicación avisa en Resultados mientras falte. Se genera una vez con los ROI de validación del dataset (ver `data/processed/README.md`):
 
 ```
-python scripts/demo/calibrar_rechazo.py --rois <carpeta con ROI de validacion> --negativas <carpeta con unas 30 imagenes que no son discos>
+python scripts/calibrar_rechazo.py --rois <carpeta con ROI de validacion> --negativas <carpeta con unas 30 imagenes que no son discos>
 ```
 
-El script informa cuántas imágenes negativas se rechazan y cuántos de los 45 casos demo se aceptan (deben ser los 45). Si cambia `svm.joblib`, hay que recalibrar: la API avisa con `umbral_obsoleto`.
-
-## Qué muestra (pestañas)
-
-| Pestaña | Qué demuestra |
-|---|---|
-| **1 · Caso a caso** | Eliges uno de los 45 casos de test (paciente, nivel, etiqueta real) y lo pasas por los 4 modelos. Ves la clase y las probabilidades de cada uno, si acierta y si **reproduce** la predicción registrada en la evaluación oficial. Debajo, el **diagrama de trazabilidad**: la imagen original y la de 224 px, las 2.048 características de la ResNet-50, el escalador y el PCA (256 componentes), los puntajes del SVM, los votos de los 300 árboles del Random Forest y el camino independiente de YOLO, cada uno con sus valores reales y su tiempo |
-| **2 · Subir imagen** | Lo mismo con un recorte (ROI) propio; sin etiqueta real. Rechaza lo que no es un disco (fotos en color, imágenes fuera de distribución). Si subes un corte completo de columna, detecta y clasifica los 5 discos |
-| **3 · Simulación** | Corre los 4 modelos sobre los 45 casos uno por uno y arma **en vivo** la matriz de confusión de cada modelo, con una tabla caso por caso y la columna *reproduce* (4/4 si los 4 modelos dan lo mismo que en `docs/resultados/`) |
-| **5 · Estudio de resonancia** | Modo radiólogo: subes los `.IMA` / `.dcm` (o un `.zip`) del resonador, se convierten a PNG con `scripts/preprocesamiento/convertidor_dcm_a_png.py` (el mismo del dataset), eliges la serie y los cortes midsagitales (propuesta: 30 %–70 % central), el detector `models/best_disc_detector.pt` recorta los 5 discos L1-S1 y los 4 modelos predicen cada uno. Muestra las cajas sobre el corte, la tabla nivel × modelo, un resumen por nivel entre los cortes elegidos y, al hacer clic en el ensamble, el diagrama de trazabilidad. Los DICOM se borran al convertirlos y el estudio al cabo de 30 min |
-| **4 · Modelos y métricas** | Métricas oficiales (test de originales, test completo, validación), hiperparámetro elegido con validación, **SHA-256 del archivo de pesos cargado** y las figuras de `docs/resultados/comparacion/` |
-
-**Importante para la presentación:** los 45 casos están balanceados a propósito (15 por clase, 3 por nivel). Su exactitud (51–60 %) **no** es la del test oficial, que tiene 768 imágenes y 73 % de Protrusión, donde los modelos dan 87,8–88,9 %. Un tercio de los casos es Degeneración, la clase más difícil.
-
-Enlaces directos útiles en clase:
-- `http://localhost:8000/mvp/#caso=caso_03`: abre el caso 3 y lo ejecuta. Los modelos no coinciden: YOLO falla y los otros 3 aciertan Degeneración.
-- `http://localhost:8000/mvp/#simular=1`: lanza la simulación al abrir.
-- `http://localhost:8000/mvp/#tab=modelos`: abre la pestaña de métricas.
-
-## Cómo se garantiza la trazabilidad
-
-| Pregunta | Dónde se responde |
-|---|---|
-| ¿De dónde sale la imagen? | `data/demo/casos.csv`: paciente, nivel, partición de test, original (no copia aumentada). Se eligió con `scripts/demo/seleccionar_casos_demo.py` (semilla 42) |
-| ¿Qué modelo exacto se usó? | `/api/modelos` y la pestaña 4: SHA-256 del archivo, igual al de `models/README.md` y al del Release `modelos-v1.0` |
-| ¿Con qué código? | La barra superior muestra el commit de git en ejecución |
-| ¿Qué le pasa a la imagen en cada paso? | `POST /api/casos/{id}/predecir` devuelve `pasos` con los valores intermedios y el tiempo de cada etapa |
-| ¿El resultado es reproducible? | Cada caso trae `pred_registrada_<modelo>`, tomada de `docs/resultados/<modelo>/puntajes.npz`, y la demo comprueba que coincida (45/45 en CPU) |
-| ¿Cómo se entrenó y evaluó cada modelo? | `docs/resultados/`, `docs/modelo_matematico/` y `scripts/entrenamiento/` |
+Si cambia `svm.joblib`, hay que recalibrar: la API lo marca como `umbral_obsoleto`.
 
 ## API
 
@@ -163,93 +134,35 @@ Arquitectura en capas: `api/routes/` (HTTP) → `schemas/` (validación con Pyda
 
 | Método y ruta | Qué hace |
 |---|---|
-| `GET /api/salud` | Estado: modelos disponibles o faltantes, imágenes de demostración, dispositivo, commit, número de casos |
-| `GET /api/modelos` | Los 4 modelos: SHA-256, configuración, hiperparámetro elegido y métricas oficiales |
-| `GET /api/casos?clase=&nivel=` | Lista de casos de demostración, con filtros |
-| `GET /api/casos/{id}/imagen` | PNG del caso |
-| `POST /api/casos/{id}/predecir` | Los 4 modelos sobre el caso: predicciones, `pasos` (traza), ensamble, `comparacion` con la etiqueta real y con lo registrado |
-| `POST /api/predecir` | Igual, para una imagen subida (`multipart/form-data`, campo `imagen`, máx. 5 MB). `422` con `{motivo, capa, valor, umbral}` si no parece un ROI de disco; `motivo = corte_completo` indica que hay que usar `/api/predecir-corte` |
+| `GET /api/salud` | Estado: modelos disponibles o faltantes, detector, dispositivo y commit |
+| `POST /api/predecir` | Recorte de un disco (`multipart/form-data`, campo `imagen`, máx. 5 MB): predicciones, traza y ensamble. `422` con `{motivo, capa, valor, umbral}` si no parece un ROI; `motivo = corte_completo` indica que hay que usar `/api/predecir-corte` |
 | `POST /api/predecir-corte` | Corte sagital completo (PNG/JPG): detecta los 5 discos y los clasifica; `422` si el detector no halla al menos 3 discos en orden |
-| `POST /api/estudios` | Sube `.IMA` / `.dcm` / `.zip` (campo `archivos`, varios). Convierte a PNG y devuelve las series, sus cortes y la propuesta de cortes midsagitales |
+| `POST /api/estudios` | Sube `.IMA` / `.dcm` / `.zip` (campo `archivos`, varios; máx. 500 archivos y 300 MB). Convierte a PNG y devuelve las series, sus cortes y la propuesta de cortes centrales |
 | `GET /api/estudios/{id}` · `GET .../series/{serie}/cortes/{n}/imagen` | Ficha del estudio y PNG de un corte |
+| `POST /api/estudios/{id}/puntuar` | Ordena los cortes según lo bien que el detector ve los 5 discos y recomienda los 3 mejores |
 | `POST /api/estudios/{id}/recortar` | `{serie, cortes[], recortar_zona_lumbar}`: detector y recorte de los 5 ROI de cada corte, sin clasificar |
-| `POST /api/estudios/{id}/predecir` | Lo mismo y además los 4 modelos sobre cada ROI, con resumen por nivel |
+| `POST /api/estudios/{id}/predecir` | Lo mismo y además los 4 modelos sobre cada ROI |
 | `POST /api/estudios/{id}/png.zip` · `DELETE /api/estudios/{id}` | Descarga los PNG elegidos / borra el estudio |
-| `POST /api/casos/simulacion?clase=&nivel=` | Simulación completa en el servidor: exactitud, matriz de confusión y reproducibilidad por modelo |
-| `GET /resultados/...` | Archivos de `docs/resultados/` (figuras y tablas oficiales), solo lectura |
 
 ## Archivos
 
 ```
 webapp/
 ├── README.md                      # esta guia
-├── iniciar_mvp.bat                # arranque en Windows (un comando)
-├── iniciar_mvp.sh                 # arranque en Linux / macOS / WSL
+├── iniciar_app.bat                # arranque en Windows (un comando)
+├── iniciar_app.sh                 # arranque en Linux / macOS / WSL
 ├── backend/
-│   ├── main.py                    # app FastAPI; sirve la API, /resultados, la aplicacion (/) y la demo (/mvp)
-│   ├── requirements.txt           # dependencias minimas para ejecutar el MVP
-│   ├── api/routes/                # sistema.py, casos.py, prediccion.py, estudios.py
+│   ├── main.py                    # app FastAPI; sirve la API y la aplicacion
+│   ├── requirements.txt           # dependencias minimas para ejecutar la aplicacion
+│   ├── api/routes/                # sistema.py, prediccion.py, estudios.py
 │   ├── schemas/prediccion.py      # modelos de entrada y salida
-│   ├── services/                  # modelos_service, casos_service, prediccion_service, estudios_service, validacion_service
-│   ├── core/config.py             # rutas y dispositivo
-│   └── utils/imagenes.py
+│   ├── services/                  # modelos_service, prediccion_service, estudios_service, validacion_service
+│   ├── core/config.py             # rutas, limites y dispositivo
+│   └── utils/                     # imagenes.py, scripts.py
 └── frontend/
-    ├── clinica/                   # aplicacion para el radiologo: index.html, css/, js/ (modulos ES, sin dependencias ni compilacion)
-    └── mvp/                       # demo: index.html, styles.css, app.js (sin dependencias; temporal)
+    └── clinica/                   # index.html, css/ y js/ (modulos ES, sin dependencias ni compilacion)
 ```
 
-## Siguientes pasos para la webapp formal
+Pruebas, desde la raíz del repo: `python -m pytest tests -q` (requiere `pytest` y `httpx`, que no forman parte de `requirements.txt`).
 
-> **Actualización:** la aplicación final se hizo en `frontend/clinica/` con HTML, CSS y JavaScript sin compilación (no React), para que funcione con el mismo script de arranque y sin internet. El MVP se conserva en `/mvp` para la demostración; lo que sigue es el plan original.
-
-Responsable: **Juan Manuel Tengonó**. El MVP deja resuelto el consumo de los modelos; lo que falta es la aplicación ordenada y presentable.
-
-**Qué se reutiliza tal cual**
-- `src/inference/predictor.py`: la lógica de los 4 modelos (`predecir`, `predecir_todos`, `trazar`). El backend no necesita saber de embeddings, escaladores ni PCA.
-- La API de `webapp/backend/`: endpoints, esquemas y servicios. Ya sigue la arquitectura en capas del README.
-- `scripts/descargar_modelos.py` y los casos de `data/demo/`.
-
-**Qué hay que construir**
-1. **Frontend en React** en `webapp/frontend/src/` (estructura `components/`, `pages/`, `services/` del README):
-   - las llamadas a la API van en `services/` (por ejemplo, `api.js` con `fetch` a `/api/...`);
-   - una vista por cada pestaña del MVP (caso a caso, subir imagen, simulación, modelos y métricas) como `pages/`;
-   - el diagrama de trazabilidad, las tarjetas de predicción y las matrices como `components/`.
-2. **Conectar React con el backend:**
-   - en desarrollo, React en su propio puerto (por ejemplo, Vite en 5173) llamando a `http://localhost:8000/api`. Hay que agregar `CORSMiddleware` en `main.py` para ese origen;
-   - en producción, servir la *build* de React desde FastAPI, cambiando el `app.mount("/", ...)` de `main.py` para que apunte a `webapp/frontend/dist`.
-3. **Borrar los archivos temporales del MVP** cuando la versión en React cubra sus 4 pestañas. Ver la tabla de abajo.
-4. **Mantener:**
-   - el aviso "herramienta académica, no diagnóstica";
-   - la aclaración de que los 45 casos son balanceados y no dan la exactitud oficial;
-   - la comprobación de reproducibilidad (columna *reproduce*);
-   - **CPU por defecto**, para reproducir la evaluación oficial.
-5. **Opcional:**
-   - pruebas en `tests/` para los endpoints, con `fastapi.testclient`;
-   - un historial de predicciones;
-   - una opción del ensamble en la interfaz, si el equipo la quiere.
-
-**Reglas que no cambian:** no reentrenar ni cambiar los pesos sin publicar un nuevo Release con sus hashes, y no tocar `data/demo/casos.csv` a mano (se regenera con su script).
-
-### Qué borrar y qué conservar
-
-Cuando la webapp formal funcione, el MVP sobra. Hay que borrar sus archivos temporales para que el repo no quede con archivos innecesarios. Pero **no todo lo de esta carpeta es temporal**: el backend y el `Predictor` son la base de la webapp formal.
-
-| Archivo o carpeta | Qué hacer | Por qué |
-|---|---|---|
-| `webapp/frontend/mvp/` (index.html, styles.css, app.js) | **Borrar** | Es la página temporal; la reemplaza el frontend en React |
-| `webapp/iniciar_mvp.bat`, `webapp/iniciar_mvp.sh` | **Borrar** (o reemplazarlos por scripts de arranque de la webapp formal) | Arrancan el MVP |
-| `.venv-mvp*/` en `.gitignore` | **Quitar la línea** si se borran los scripts | Solo la usan esos scripts |
-| `app.mount("/", ...)` en `webapp/backend/main.py` | **Cambiar** para servir la *build* de React, o quitarlo | Hoy sirve la página del MVP |
-| Este `webapp/README.md` y la sección *Demo (MVP)* del README raíz | **Reescribir** para la webapp formal | Describen el MVP |
-| `webapp/backend/` (API, esquemas, servicios) | **Conservar** y mejorar | Es la base del backend formal; no es temporal |
-| `src/inference/predictor.py` | **Conservar** | Lógica de los 4 modelos |
-| `scripts/descargar_modelos.py` | **Conservar** | Descarga y verifica los pesos del Release |
-| `data/demo/` y `scripts/demo/` | **Conservar** si la webapp formal mantiene la simulación y la trazabilidad (recomendado para la sustentación); si no, borrar los dos juntos | Son los casos de test de la demostración |
-
-**No borres nada del MVP antes de que la webapp formal funcione:** hasta entonces es lo único que demuestra los modelos.
-
-Para borrar (desde la raíz del repo, en una rama `feature/tengono-...`):
-```
-git rm -r webapp/frontend/mvp webapp/iniciar_mvp.bat webapp/iniciar_mvp.sh
-git commit -m "chore(frontend): retirar el MVP temporal reemplazado por la webapp formal"
-```
+**Reglas que no cambian:** no reentrenar ni cambiar los pesos sin publicar un nuevo Release con sus hashes, y mantener la CPU por defecto para reproducir la evaluación oficial.

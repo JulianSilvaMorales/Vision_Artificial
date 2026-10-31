@@ -1,7 +1,7 @@
 // Paso 1: elegir archivos o una carpeta, descartar lo que no es DICOM y subir el estudio con progreso.
 import { subirEstudio } from "./api.js";
 import { abrirEstudio } from "./cortes.js";
-import { $, $$, E, avisar } from "./estado.js";
+import { $, $$, E, avisar, esc } from "./estado.js";
 
 const MAX_ARCHIVOS = 500, MAX_BYTES = 300 * 1024 * 1024;       // los mismos limites que el servidor
 // Lo que suele venir en la carpeta exportada de un resonador y no es un corte: el indice DICOMDIR, visores, imagenes
@@ -46,7 +46,7 @@ async function subir(lista) {
   const bytes = ok.reduce((s, a) => s + a.size, 0);
   $("#seleccion").hidden = false;
   $("#seleccion").innerHTML = `<strong>${ok.length} archivo${ok.length === 1 ? "" : "s"}</strong> · ${tamano(bytes)}`
-    + (omitidos.length ? `<span>Se omiten ${omitidos.length} que no son cortes (${omitidos.slice(0, 3).join(", ")}${omitidos.length > 3 ? "…" : ""})</span>` : "");
+    + (omitidos.length ? `<span>Se omiten ${omitidos.length} que no son cortes (${esc(omitidos.slice(0, 3).join(", "))}${omitidos.length > 3 ? "…" : ""})</span>` : "");
   if (!ok.length) return mostrarError("No hay archivos DICOM en la selección. Elige los .IMA/.dcm del estudio, su carpeta o un .zip.");
   if (ok.length > MAX_ARCHIVOS || bytes > MAX_BYTES)
     return mostrarError(`El estudio supera el límite (${MAX_ARCHIVOS} archivos o 300 MB). Exporta solo la serie T2 sagital y vuelve a intentarlo.`);

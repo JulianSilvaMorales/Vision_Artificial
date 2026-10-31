@@ -15,8 +15,8 @@ El SVM no entrega probabilidades sino distancias al hiperplano (decision_functio
 para mostrarlas en la misma escala, pero NO son probabilidades calibradas (`es_probabilidad=False`).
 
 `trazar(imagen)` corre los 4 modelos y devuelve cada paso intermedio (preprocesamiento, caracteristicas de la
-ResNet-50, escalador y PCA, puntajes del SVM, votos de los arboles, YOLO) con su tiempo, para la demo de
-trazabilidad. Las caracteristicas de la ResNet-50 se calculan una sola vez y las comparten los modelos 2, 3 y 4.
+ResNet-50, escalador y PCA, puntajes del SVM, votos de los arboles, YOLO) con su tiempo, para auditar
+cada prediccion. Las caracteristicas de la ResNet-50 se calculan una sola vez y las comparten los modelos 2, 3 y 4.
 Herramienta academica, no diagnostica.
 """
 import io

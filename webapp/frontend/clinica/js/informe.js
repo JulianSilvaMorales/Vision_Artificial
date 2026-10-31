@@ -1,13 +1,13 @@
 // Paso 4: informe con el resultado del modelo y, al lado, la valoracion y las observaciones del radiologo.
 // Las observaciones no salen del navegador: se guardan en localStorage (borrador) y en el PDF que se imprima.
 import { fraseGeneral, resumenEstudio } from "./analisis.js";
-import { $, $$, E, ETIQ, avisar, esc, guardado, serieActual, urlCorte } from "./estado.js";
+import { $, $$, E, ETIQ, avisar, confirmar, esc, guardado, serieActual, urlCorte } from "./estado.js";
 import { alEntrarEn, irA } from "./nav.js";
 import { claseColor } from "./resultados.js";
 import { cajasSVG } from "./visor.js";
 
 const CAMPOS = [
-  { id: "estudio", etiqueta: "Identificación del estudio", tipo: "text", ayuda: "Opcional. Los datos del DICOM no se usan.", ej: "Estudio 2026-118, hombre de 54 años" },
+  { id: "estudio", etiqueta: "Identificación del estudio", tipo: "text", ayuda: "Opcional. No escribas datos que identifiquen al paciente: se guardan en este navegador.", ej: "Estudio 2026-118" },
   { id: "hallazgos", etiqueta: "Hallazgos", frases: ["Hallazgos concordantes con el análisis automático.", "Sin estenosis significativa del canal central.",
     "Disminución de la señal en T2 (deshidratación) del disco ", "Fisura anular en "] },
   { id: "impresion", etiqueta: "Impresión", frases: ["Cambios degenerativos discales en ", "Protrusión discal en ", "Sin alteraciones discales significativas."] },
@@ -62,10 +62,11 @@ function pintarFormulario() {
   $("#btn-borrar").addEventListener("click", borrarEstudio);
 }
 
-function finalizar(sinRevisar) {
+async function finalizar(sinRevisar) {
   const nombre = (inf.campos.radiologo || "").trim();
   if (!nombre) { avisar("Escribe el nombre del radiólogo que revisa antes de finalizar.", "error"); $("#f-radiologo").focus(); return; }
-  if (sinRevisar && !confirm(`Hay ${sinRevisar} disco(s) sin tu valoración. En el informe figurarán como "Sin revisar". ¿Finalizar igual?`)) return;
+  if (sinRevisar && !await confirmar({ titulo: "¿Finalizar el informe?", aceptar: "Finalizar igual",
+    texto: `Hay ${sinRevisar} disco${sinRevisar === 1 ? "" : "s"} sin tu valoración. En el informe figurará${sinRevisar === 1 ? "" : "n"} como "Sin revisar".` })) return;
   inf.firma = { nombre, fecha: new Date().toLocaleString("es", { dateStyle: "long", timeStyle: "short" }) };
   guardar(); pintarInforme();
   avisar("Informe finalizado. Ya puedes imprimirlo o guardarlo como PDF.", "ok");
@@ -102,8 +103,8 @@ function pintarHoja() {
     <div class="hoja-cuerpo"><div><h3>Hallazgos</h3><p>${t("hallazgos")}</p><h3>Impresión</h3><p>${t("impresion")}</p>
       <h3>Recomendación</h3><p>${t("recomendacion")}</p></div>${imagenHoja()}</div>
     <footer class="hoja-pie"><p class="firma">${inf.firma ? `Revisado por <strong>${esc(inf.firma.nombre)}</strong> · ${esc(inf.firma.fecha)}` : "<strong>Borrador</strong> · sin finalizar"}</p>
-      <p>Herramienta de apoyo con fines académicos: clasificación automática de discos L1-S1 con 4 modelos (YOLOv8s-cls, ResNet-50, SVM y Random Forest).
-      La decisión diagnóstica corresponde al radiólogo.</p></footer>`;
+      <p>Herramienta académica, no diagnóstica: clasificación automática de discos L1-S1 con 4 modelos (YOLOv8s-cls, ResNet-50, SVM y Random Forest),
+      entrenados con etiquetas asignadas por estudiantes, sin radiólogo. La decisión diagnóstica corresponde al radiólogo.</p></footer>`;
 }
 
 export function pintarInforme() { pintarFormulario(); pintarHoja(); }
@@ -116,11 +117,12 @@ async function descargarPNG() {
     const url = URL.createObjectURL(await r.blob());
     Object.assign(document.createElement("a"), { href: url, download: "cortes.zip" }).click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-  } catch (e) { avisar(`No se pudieron descargar los cortes (${e.message}). El estudio se borra a los 30 minutos.`, "error"); }
+  } catch (e) { avisar(`No se pudieron descargar los cortes (${e.message}). El estudio se borra tras 30 minutos sin usarse.`, "error"); }
 }
 
 async function borrarEstudio() {
-  if (!confirm("¿Borrar el estudio del servidor y el borrador del informe? No se puede deshacer.")) return;
+  if (!await confirmar({ titulo: "¿Borrar el estudio?", aceptar: "Borrar estudio", peligro: true,
+    texto: "Se borrarán el estudio del servidor y el borrador del informe. No se puede deshacer." })) return;
   await fetch(`/api/estudios/${E.estudio.id}`, { method: "DELETE" }).catch(() => {});
   guardado.borrar(clave());
   E.estudio = null;                    // asi la sesion no se vuelve a guardar al recargar

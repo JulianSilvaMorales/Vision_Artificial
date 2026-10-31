@@ -36,5 +36,6 @@ data/processed/test/
 models/*.joblib
 models/*.npz
 
-# Entorno virtual que crean webapp/iniciar_mvp.bat y webapp/iniciar_mvp.sh
+# Entorno virtual que crean webapp/iniciar_app.bat y webapp/iniciar_app.sh (y el .venv-mvp de versiones anteriores)
+.venv-app*/
 .venv-mvp*/

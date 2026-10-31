@@ -49,7 +49,7 @@ async function cargarEstado() {
   } catch {
     e.className = "estado mal";
     t.textContent = "Sin conexión con el servidor";
-    e.title = "Abre webapp/iniciar_mvp.bat (o .sh) y recarga la página";
+    e.title = "Abre webapp/iniciar_app.bat (o .sh) y recarga la página";
   }
 }
 
@@ -71,7 +71,7 @@ async function restaurarSesion() {
   } catch {
     guardado.borrar(SESION);
     guardado.borrar(`deepspine.informe.${s.estudio.id}`);
-    avisar("El estudio anterior ya no está en el servidor (se borra a los 30 minutos). Cárgalo de nuevo.");
+    avisar("El estudio anterior ya no está en el servidor (se borra tras 30 minutos sin usarse). Cárgalo de nuevo.");
     return;
   }
   Object.assign(E, { ...s, sel: new Set(s.sel), cajas: {} });

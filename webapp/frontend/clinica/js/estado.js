@@ -41,6 +41,28 @@ export const guardado = {
   borrar(clave) { try { localStorage.removeItem(clave); } catch { /* sin almacenamiento */ } },
 };
 
+// Confirmacion dentro de la pagina (no la ventana del navegador). Devuelve una promesa con true si se acepta;
+// Cancelar, Esc o cerrar el dialogo dan false.
+let respuesta = null;       // solo hay una confirmacion pendiente a la vez
+
+export function confirmar({ titulo, texto, aceptar, peligro = false }) {
+  const d = $("#dlg-confirmar"), si = $("#confirmar-si");
+  $("#confirmar-titulo").textContent = titulo;
+  $("#confirmar-texto").textContent = texto;
+  si.textContent = aceptar;
+  si.className = peligro ? "secundario peligro" : "principal";
+  if (respuesta) respuesta(false);      // la anterior se cancelo y su "close" aun no llega
+  d.returnValue = "";
+  d.onclose = () => {
+    if (d.open) return;                 // ese "close" atrasado: este dialogo sigue abierto
+    const r = respuesta;
+    respuesta = null;
+    if (r) r(d.returnValue === "si");
+  };
+  d.showModal();
+  return new Promise((resolver) => { respuesta = resolver; });
+}
+
 // Avisos breves abajo a la derecha
 export function avisar(texto, tipo = "info") {
   const caja = $("#avisos");
