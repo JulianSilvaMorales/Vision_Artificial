@@ -1,4 +1,26 @@
-# webapp · MVP de demostración (temporal)
+# webapp · DeepSpine (aplicación para el radiólogo y demo del MVP)
+
+Un solo servidor sirve dos páginas:
+
+| Dirección | Qué es |
+|---|---|
+| **http://127.0.0.1:8000/** | **Aplicación para el radiólogo** (`frontend/clinica/`): cargar un estudio, elegir los cortes centrales, resultados por disco e informe imprimible con sus observaciones. Es la que abre `iniciar_mvp.bat` |
+| **http://127.0.0.1:8000/mvp** | **Demo del MVP** (`frontend/mvp/`): casos de test, simulación, modelos y métricas. Para mostrar la evaluación a la docente |
+
+## Aplicación para el radiólogo
+
+Cuatro pasos, en tema oscuro (se cambia a claro con el botón de la barra; se recuerda en ese navegador):
+
+1. **Cargar:** arrastra los `.IMA` / `.dcm`, la carpeta exportada del resonador o un `.zip`. Lo que no es un corte (`DICOMDIR`, visores, imágenes) se descarta antes de subir.
+2. **Cortes:** visor con brillo y contraste (arrastrar), zoom, cajas del detector (B) y la tira de miniaturas. El detector recomienda los 3 cortes más centrales (★) y quedan elegidos; el radiólogo puede cambiarlos.
+3. **Resultados:** conclusión en lenguaje natural y una tarjeta por disco con la clase, en cuántos cortes se repite, cuántos votos de los modelos coinciden y una confianza orientativa. En cada disco el radiólogo marca *Concuerdo* o *Discrepo* (con la clase que ve y una nota). El detalle por modelo queda plegado.
+4. **Informe:** hallazgos, impresión, recomendación y nombre del radiólogo, con frases rápidas. *Finalizar informe* bloquea el texto y agrega la firma; *Editar* la quita. Se imprime o guarda como PDF (A4) desde el navegador.
+
+Las observaciones del radiólogo no se envían al servidor: se guardan como borrador en ese navegador y en el PDF que se imprima. Si se recarga la página, el estudio, el análisis y el borrador se recuperan mientras el estudio siga en el servidor (30 minutos).
+
+El atajo **Analizar una imagen** (barra superior) clasifica un recorte de disco o un corte completo suelto.
+
+## Demo del MVP (/mvp)
 
 > **TEMPORAL.** MVP solo para la entrega del Hito 2 (2026-10-30): demuestra la **simulación de resultados** y la **trazabilidad** de los 4 modelos. **No es la webapp final.** La webapp formal (backend ordenado y frontend en React) la desarrolla Juan Manuel Tengonó a partir de esta API. Cuando funcione, **hay que borrar los archivos temporales del MVP** y reescribir este documento (ver [qué borrar y qué conservar](#qué-borrar-y-qué-conservar)).
 
@@ -66,10 +88,10 @@ python scripts/descargar_modelos.py
 python -m uvicorn webapp.backend.main:app --port 8000
 ```
 
-Abrir **http://127.0.0.1:8000** (o `http://localhost:8000`) cuando la terminal diga `Application startup complete`. La documentación interactiva de la API está en **http://127.0.0.1:8000/docs**.
+Abrir **http://127.0.0.1:8000** (o `http://localhost:8000`) cuando la terminal diga `Application startup complete`; la demo está en **http://127.0.0.1:8000/mvp**. La documentación interactiva de la API está en **http://127.0.0.1:8000/docs**.
 
 ### 5. Comprobar que todo está bien
-La barra superior de la página debe decir **"4 modelos cargables · CPU · commit … · 45 casos"** en verde. Si está en rojo, dice qué falta. También se puede consultar `http://localhost:8000/api/salud`.
+La barra superior de la aplicación debe decir **"Sistema listo · CPU"** con un punto verde, y la de la demo (`/mvp`) **"4 modelos cargables · CPU · commit … · 45 casos"** en verde. Si está en rojo, dice qué falta. También se puede consultar `http://localhost:8000/api/salud`.
 
 ### Problemas frecuentes
 
@@ -120,9 +142,9 @@ El script informa cuántas imágenes negativas se rechazan y cuántos de los 45 
 **Importante para la presentación:** los 45 casos están balanceados a propósito (15 por clase, 3 por nivel). Su exactitud (51–60 %) **no** es la del test oficial, que tiene 768 imágenes y 73 % de Protrusión, donde los modelos dan 87,8–88,9 %. Un tercio de los casos es Degeneración, la clase más difícil.
 
 Enlaces directos útiles en clase:
-- `http://localhost:8000/#caso=caso_03`: abre el caso 3 y lo ejecuta. Los modelos no coinciden: YOLO falla y los otros 3 aciertan Degeneración.
-- `http://localhost:8000/#simular=1`: lanza la simulación al abrir.
-- `http://localhost:8000/#tab=modelos`: abre la pestaña de métricas.
+- `http://localhost:8000/mvp/#caso=caso_03`: abre el caso 3 y lo ejecuta. Los modelos no coinciden: YOLO falla y los otros 3 aciertan Degeneración.
+- `http://localhost:8000/mvp/#simular=1`: lanza la simulación al abrir.
+- `http://localhost:8000/mvp/#tab=modelos`: abre la pestaña de métricas.
 
 ## Cómo se garantiza la trazabilidad
 
@@ -164,7 +186,7 @@ webapp/
 ├── iniciar_mvp.bat                # arranque en Windows (un comando)
 ├── iniciar_mvp.sh                 # arranque en Linux / macOS / WSL
 ├── backend/
-│   ├── main.py                    # app FastAPI; sirve la API, /resultados y la pagina del MVP
+│   ├── main.py                    # app FastAPI; sirve la API, /resultados, la aplicacion (/) y la demo (/mvp)
 │   ├── requirements.txt           # dependencias minimas para ejecutar el MVP
 │   ├── api/routes/                # sistema.py, casos.py, prediccion.py, estudios.py
 │   ├── schemas/prediccion.py      # modelos de entrada y salida
@@ -172,10 +194,13 @@ webapp/
 │   ├── core/config.py             # rutas y dispositivo
 │   └── utils/imagenes.py
 └── frontend/
-    └── mvp/                       # index.html, styles.css, app.js (sin dependencias; temporal)
+    ├── clinica/                   # aplicacion para el radiologo: index.html, css/, js/ (modulos ES, sin dependencias ni compilacion)
+    └── mvp/                       # demo: index.html, styles.css, app.js (sin dependencias; temporal)
 ```
 
 ## Siguientes pasos para la webapp formal
+
+> **Actualización:** la aplicación final se hizo en `frontend/clinica/` con HTML, CSS y JavaScript sin compilación (no React), para que funcione con el mismo script de arranque y sin internet. El MVP se conserva en `/mvp` para la demostración; lo que sigue es el plan original.
 
 Responsable: **Juan Manuel Tengonó**. El MVP deja resuelto el consumo de los modelos; lo que falta es la aplicación ordenada y presentable.
 
