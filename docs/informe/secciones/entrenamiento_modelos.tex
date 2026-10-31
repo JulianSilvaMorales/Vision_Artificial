@@ -1,0 +1,136 @@
+% =====================================================================
+% Seccion: Entrenamiento y evaluacion de los cuatro modelos
+% Fragmento SIN preambulo: \input{secciones/entrenamiento_modelos}
+% Cifras: docs/resultados/ y docs/modelo_matematico/README.md
+% =====================================================================
+\section{Entrenamiento y evaluación de los modelos}
+\label{sec:entrenamiento}
+
+Los cuatro modelos se entrenaron con el dataset de la Sección~\ref{sec:dataset}, con la misma división por paciente y la semilla 42. Cada script comprueba que ningún paciente esté en dos particiones y que el dataset coincida con \arch{manifest_35k.csv}. Los scripts están en \arch{scripts/entrenamiento/}, los resultados en \arch{docs/resultados/} y las ecuaciones de cada modelo en \arch{docs/modelo_matematico/README.md}.
+
+\subsection{Estructura del sistema}
+La Figura~\ref{fig:estructura} muestra la arquitectura. YOLOv8s-cls sigue un camino independiente. La ResNet-50 es la base de los otros tres modelos: sus 2\,048 características alimentan su propia capa final (modelo~2) y, una vez estandarizadas y reducidas a 256 componentes con PCA, al SVM (modelo~3) y al Random Forest (modelo~4). El ensamble promedia las salidas de los cuatro; no se entrena y se reporta como resultado adicional, no como quinto modelo.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{09_estructura_sistema.png}
+\caption{Estructura del sistema: los modelos 2, 3 y 4 comparten las características de la ResNet-50.}
+\label{fig:estructura}
+\end{figure}
+
+\subsection{Protocolo de entrenamiento}
+El orden fue el siguiente, y cada etapa usó solo lo aprendido en las anteriores:
+\begin{enumerate}
+  \item Ajuste de YOLOv8s-cls con entrenamiento, eligiendo la época con validación.
+  \item Ajuste de la ResNet-50 con entrenamiento, eligiendo la época con validación.
+  \item Ajuste del escalador y del PCA con las características de entrenamiento.
+  \item Ajuste del SVM y del Random Forest, eligiendo sus hiperparámetros con validación.
+  \item Evaluación única sobre la partición de prueba, con la configuración ya cerrada.
+\end{enumerate}
+La Tabla~\ref{tab:config} resume la configuración de las dos redes. Ambas parten de pesos de ImageNet y usan AdamW con tasa de aprendizaje en coseno.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Configuración de entrenamiento de las redes.}
+\label{tab:config}
+\begin{tabular}{p{0.30\linewidth}p{0.29\linewidth}p{0.29\linewidth}}
+\toprule
+ & YOLOv8s-cls & ResNet-50 \\
+\midrule
+Parámetros & 5\,084\,579 & 23\,514\,179 (225\,344 congelados) \\
+Tasa inicial / mínima & $5\cdot10^{-4}$ / $5\cdot10^{-5}$ & $10^{-4}$ / 0 \\
+Épocas máximas / paciencia & 15 / 4 & 10 / 4 \\
+Capas congeladas & primeros 4 módulos & \arch{conv1}, \arch{bn1}, \arch{layer1} \\
+Suavizado de etiquetas & no & $\varepsilon = 0{,}1$ \\
+Criterio de la época & exactitud en validación & F1 macro en validación \\
+Época elegida / corridas & 2 / 6 & 2 / 6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{SVM y Random Forest.} Con validación se eligió $C = 0{,}1$ para el SVM (núcleo RBF), que quedó con 1\,684 vectores de soporte de 24\,501 imágenes, y una profundidad máxima de 20 para el Random Forest de 300 árboles (Figura~\ref{fig:hiper}). Con PCA, 256 componentes explican el 80,0\,\% de la varianza de las características ajustadas.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{08_busqueda_hiperparametros.png}
+\caption{Búsqueda de hiperparámetros con la partición de validación.}
+\label{fig:hiper}
+\end{figure}
+
+\subsection{Evidencia del entrenamiento}
+Las Figuras~\ref{fig:curvas1} y~\ref{fig:curvas2} son las curvas registradas. En las dos redes la mejor época es la 2: desde ahí la pérdida de entrenamiento sigue bajando y la de validación empeora. En la ResNet-50, el F1 macro de validación llegó a 0,824 en la época 2 y bajó en las siguientes, y la parada temprana detuvo el proceso en la época 6.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\linewidth]{modelo1_yolov8s_cls/curvas_entrenamiento.png}
+\caption{Curvas de entrenamiento de YOLOv8s-cls.}
+\label{fig:curvas1}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\linewidth]{modelo2_resnet50/curvas_entrenamiento.png}
+\caption{Curvas de entrenamiento de la ResNet-50.}
+\label{fig:curvas2}
+\end{figure}
+
+\subsection{Ajustes probados en validación}
+Se probaron variantes para acercarse al 89\,\% de exactitud que pide la rúbrica, todas decididas con validación (registro en \arch{docs/resultados/experimentos_validacion.md}). El cambio de mayor efecto fue sustituir el extractor de ImageNet por la ResNet-50 ajustada: el F1 de validación subió de 0,65 a 0,80 en el SVM y de 0,60 a 0,79 en el Random Forest. A cambio, los modelos 3 y 4 dependen del modelo~2. Las demás variantes se estancaron en una exactitud de 86--87,5\,\% en validación.
+
+\subsection{Resultados}
+\label{sec:resultados}
+La Tabla~\ref{tab:resultados} recoge los resultados en la prueba de originales. El registro de la Tabla~\ref{tab:registro} compara entrenamiento y prueba. Las Figuras~\ref{fig:matrices}, \ref{fig:roc} y~\ref{fig:barras} muestran las matrices de confusión, las curvas ROC y la comparación con el conjunto de prueba completo.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Resultados en los originales de prueba (768 imágenes: 42 Degeneración, 164 Normal, 562 Protrusión).}
+\label{tab:resultados}
+\begin{tabular}{lrrrrrr}
+\toprule
+ & & & & \multicolumn{3}{c}{Recall} \\
+\cmidrule(lr){5-7}
+Modelo & Exactitud & F1 macro & ROC-AUC & Deg. & Normal & Prot. \\
+\midrule
+1. YOLOv8s-cls        & 87,8\,\% & 0,750 & 0,931 & 0,50 & 0,76 & 0,94 \\
+\textbf{2. ResNet-50} & \textbf{88,9\,\%} & \textbf{0,769} & 0,919 & 0,50 & 0,81 & 0,94 \\
+3. SVM (RBF)          & 88,4\,\% & 0,748 & 0,899 & 0,43 & 0,77 & 0,95 \\
+4. Random Forest      & 88,4\,\% & 0,746 & 0,942 & 0,40 & 0,77 & 0,95 \\
+\midrule
+Extra: ensamble       & 88,9\,\% & 0,745 & 0,947 & 0,40 & 0,81 & 0,95 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{comparacion/matrices_confusion_test_orig.png}
+\caption{Matrices de confusión de los cuatro modelos en los originales de prueba.}
+\label{fig:matrices}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.7\linewidth]{comparacion/roc_test_orig.png}
+\caption{Curvas ROC macro en los originales de prueba.}
+\label{fig:roc}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{comparacion/barras_test.png}
+\caption{Exactitud y F1 macro por modelo en la prueba de originales y en la prueba completa.}
+\label{fig:barras}
+\end{figure}
+
+\paragraph{Lectura de los resultados.}
+\begin{itemize}
+  \item \textbf{Ningún modelo alcanza el 89\,\%.} La ResNet-50 acierta 683 de 768 imágenes (88,9\,\%; IC de Wilson al 95\,\%: 86,5--91,0\,\%). Las diferencias entre los cuatro modelos están dentro de ese margen.
+  \item \textbf{La exactitud está favorecida por la clase mayoritaria.} Decir siempre Protrusión daría 73,2\,\%. Por eso se usa el F1 macro como criterio.
+  \item \textbf{Degeneración es la clase débil:} como mucho se detecta la mitad de los 42 casos, y muchos se confunden con Protrusión.
+  \item \textbf{Hay sobreajuste:} los modelos superan el 97\,\% en entrenamiento y quedan cerca del 89\,\% en prueba. En la prueba completa, que pesa igual las tres clases, la exactitud baja a 74--78\,\%.
+  \item \textbf{Posible atajo por nivel:} la ResNet-50 acierta 97,4\,\% en L4-L5 y 78,4\,\% en L1-L2, en coherencia con el sesgo de la Tabla~\ref{tab:nivel}.
+  \item \textbf{El ensamble no reemplaza a la ResNet-50.} Mejora ROC-AUC y MSE, pero detecta 17 de 42 casos de Degeneración frente a 21, y su F1 macro de validación es 0,822 frente a 0,824.
+\end{itemize}
+
+\subsection{Publicación de los modelos}
+Los pesos (\arch{yolov8s_cls.pt}, \arch{resnet50.pt}, \arch{svm.joblib} y \arch{random_forest.joblib}, unos 121~MB) están en la \emph{Release} \arch{modelos-v1.0} de GitHub. El script \arch{scripts/descargar_modelos.py} los descarga y verifica su SHA-256. El detector de discos se versiona con Git LFS.

@@ -1,0 +1,58 @@
+% =====================================================================
+% Seccion: Simulacion de resultados
+% Fragmento SIN preambulo: \input{secciones/simulacion}
+% Casos: data/demo/casos.csv del commit 58b1a9e. Cifras: nueva corrida con
+% la version final de la API (/api/predecir), 2026-10-30.
+% =====================================================================
+\section{Simulación de resultados}
+\label{sec:simulacion}
+
+La simulación comprueba de punta a punta que el sistema desplegado se comporta igual que los modelos evaluados. Toma un conjunto fijo de casos, los pasa uno por uno por los cuatro modelos y compara cada predicción con la que quedó registrada en la evaluación oficial (\arch{puntajes.npz}, en \arch{docs/resultados/}).
+
+\subsection{Casos y procedimiento}
+Se usaron 45 imágenes originales de la partición de prueba, 15 por clase, repartidas entre los cinco niveles y elegidas con la semilla 42 por el script \arch{seleccionar_casos_demo.py}. Ningún modelo las vio al entrenar. Por cada caso se ejecutan los cuatro modelos y el ensamble, se actualiza la matriz de confusión y se marca si cada predicción coincide con la registrada. En el MVP esto se veía en vivo (Figuras~\ref{fig:mvpsim} y~\ref{fig:mvpsimfin}).
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{mvp_simulacion.jpg}
+\caption{Simulación en curso en el MVP (29 de 45 casos).}
+\label{fig:mvpsim}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{mvp_simulacion_fin.jpg}
+\caption{Últimas filas de la simulación en el MVP: cada caso reproduce el registro oficial en los cuatro modelos (4/4).}
+\label{fig:mvpsimfin}
+\end{figure}
+
+\subsection{Resultados}
+Aunque el MVP se retiró, la simulación se repitió con la versión final de la API, sobre los mismos 45 casos, en CPU (unos 11~s en total). La Tabla~\ref{tab:simulacion} recoge el resultado.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Simulación sobre 45 casos de prueba (15 por clase). Cada celda indica cuántos casos de la clase real recibieron cada predicción, en el orden Degeneración / Normal / Protrusión.}
+\label{tab:simulacion}
+\begin{tabular}{lcccrr}
+\toprule
+ & \multicolumn{3}{c}{Clase real} & & \\
+\cmidrule(lr){2-4}
+Modelo & Degeneración & Normal & Protrusión & Aciertos & Reproduce \\
+\midrule
+1. YOLOv8s-cls   & 3 / 2 / 10 & 0 / 8 / 7  & 1 / 2 / 12 & 23 de 45 & 45 de 45 \\
+2. ResNet-50     & 4 / 2 / 9  & 0 / 10 / 5 & 0 / 2 / 13 & 27 de 45 & 45 de 45 \\
+3. SVM (RBF)     & 3 / 2 / 10 & 0 / 10 / 5 & 0 / 2 / 13 & 26 de 45 & 45 de 45 \\
+4. Random Forest & 3 / 2 / 10 & 0 / 10 / 5 & 0 / 1 / 14 & 27 de 45 & 45 de 45 \\
+\midrule
+Extra: ensamble  & 3 / 2 / 10 & 0 / 10 / 5 & 0 / 2 / 13 & 26 de 45 & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Lectura.}
+\begin{itemize}
+  \item \textbf{Reproducibilidad.} Las 45 predicciones de cada modelo coinciden con la evaluación oficial, es decir, 180 de 180. La aplicación ejecuta los mismos modelos que se evaluaron.
+  \item \textbf{La exactitud de la simulación no es la oficial.} Los aciertos (51--60\,\%) no se comparan con el 88,9\,\% de la Tabla~\ref{tab:resultados}: aquí cada clase pesa un tercio, mientras que en la prueba de originales el 73\,\% es Protrusión. Estos casos sirven para verificar el sistema, no para medir su desempeño.
+  \item \textbf{Se repite el patrón de error.} Como máximo se aciertan 4 de 15 casos de Degeneración, y entre 9 y 10 se confunden con Protrusión. Es la misma debilidad de la Sección~\ref{sec:resultados}, más visible porque la clase pesa más.
+  \item \textbf{Acuerdo entre modelos.} Los cuatro coinciden en 35 de los 45 casos, lo que confirma que no son opiniones independientes: tres de ellos comparten las características de la ResNet-50.
+\end{itemize}

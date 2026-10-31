@@ -1,0 +1,64 @@
+% =====================================================================
+% Seccion: Aplicacion web final y correcciones
+% Fragmento SIN preambulo: \input{secciones/aplicacion_web}
+% Commits: rama feature/julian-webapp-final, integrada en main en faa42ff
+% =====================================================================
+\section{Aplicación web para el radiólogo}
+\label{sec:web}
+
+Sobre el MVP, Juan Manuel Tengonó desarrolló la aplicación final en \arch{webapp/frontend/clinica/}. Se ejecuta en local, en CPU y sin internet después de la primera instalación: FastAPI sirve la API y una interfaz en HTML, CSS y JavaScript sin compilación. Se arranca con \arch{webapp/iniciar_app.bat} en Windows o con \arch{webapp/iniciar_app.sh} en Linux y macOS. Se prefirió esta tecnología frente a React porque no requiere compilar nada y mantiene el arranque de un solo comando.
+
+\subsection{Flujo de trabajo}
+\begin{enumerate}
+  \item \textbf{Cargar.} Recibe archivos \arch{.IMA} o \arch{.dcm}, la carpeta del resonador o un \arch{.zip} (Figura~\ref{fig:appinicio}). Convierte a PNG con el mismo convertidor del dataset e identifica la serie T2 sagital.
+  \item \textbf{Cortes.} Visor con brillo, contraste, zoom y cajas del detector. El detector recomienda los cortes donde mejor ve los cinco discos, y el usuario puede cambiarlos (Figura~\ref{fig:appcortes}).
+  \item \textbf{Resultados.} Conclusión en lenguaje natural y una tarjeta por disco con la clase del ensamble, en cuántos cortes se repite y cuántos votos coinciden. En cada disco el radiólogo marca si concuerda o discrepa.
+  \item \textbf{Informe.} Hallazgos, impresión, recomendación y firma. Se imprime o se guarda como PDF (Figura~\ref{fig:informe}).
+\end{enumerate}
+El atajo \emph{Analizar una imagen} clasifica un recorte de disco o un corte completo suelto.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{app_inicio.png}
+\caption{Pantalla inicial de la versión final de la aplicación.}
+\label{fig:appinicio}
+\end{figure}
+
+\subsection{Rechazo de imágenes y privacidad}
+Los cuatro modelos siempre eligen una de las tres clases, así que antes de predecir se filtran las imágenes. La capa~1 rechaza imágenes en color, diminutas o de proporciones raras. La capa~2 distingue recorte de corte completo, y un corte solo se acepta si el detector halla al menos tres niveles en orden. La capa~3, una distancia de Mahalanobis sobre las características, \textbf{no está activa}: requiere calibrar un umbral con \arch{scripts/calibrar_rechazo.py}, y mientras tanto la aplicación lo advierte.
+
+Los DICOM se borran al convertirse, y el nombre, la fecha de nacimiento y los identificadores nunca se devuelven ni se registran. Los PNG se borran tras 30 minutos sin uso o al detener el servidor.
+
+\subsection{Correcciones a la aplicación}
+\label{sec:arreglos}
+Al revisar la aplicación frente a lo definido en el proyecto se hallaron fallos y restos del MVP. La Tabla~\ref{tab:arreglos} los resume, y todos los cambios se integraron en \arch{main} con el commit \arch{faa42ff}. La Figura~\ref{fig:confirmar} muestra la confirmación dentro de la página, y la comparación de las Figuras~\ref{fig:apprechazo} y~\ref{fig:appinicio} muestra el aviso reforzado.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Correcciones hechas a la aplicación y commit de cada una.}
+\label{tab:arreglos}
+\begin{tabular}{p{0.36\linewidth}p{0.40\linewidth}p{0.13\linewidth}}
+\toprule
+Problema & Corrección & Commit \\
+\midrule
+Repetir el análisis podía duplicar resultados o mezclar uno anterior & Un contador cancela los análisis atrasados y el cambio de serie reinicia el estado & \arch{b5e848f} \\
+Los estudios vencidos solo se borraban al arrancar & Limpieza periódica cada minuto y borrado total al detener el servidor & \arch{35ab7e5} \\
+Los avisos no explicaban los límites de la herramienta & Avisos sobre etiquetas, confianza orientativa y filtro sin calibrar & \arch{13d05f3} \\
+Convivían el MVP, código sin uso y rutas que la aplicación no llama & Retiro del MVP, los casos de demostración, CORS y las rutas sobrantes & \arch{1360698} \\
+Scripts y entorno seguían con el nombre del MVP & Paso a \arch{iniciar_app} y \arch{.venv-app} & \arch{be46285} \\
+Borrar un estudio abría la ventana nativa del navegador & Diálogo de confirmación dentro de la página & \arch{8ba1c36} \\
+El cierre atrasado de un diálogo consumía la confirmación siguiente y el estudio no se borraba & Se ignora ese cierre mientras el diálogo sigue abierto & \arch{173f44f} \\
+Una confirmación cancelada quedaba pendiente y provocaba un doble borrado & Una sola confirmación pendiente a la vez & \arch{2e87449} \\
+Documentación y carpetas desactualizadas & README al día; retiro de \arch{assets/} y \arch{data/external/} & \arch{0cef456}, \arch{cefe20c} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\linewidth]{app_confirmar.png}
+\caption{Confirmación dentro de la página, en lugar de la ventana del navegador (versión final).}
+\label{fig:confirmar}
+\end{figure}
+
+\paragraph{Verificación.} Tras las correcciones, las 30 pruebas automáticas de \arch{tests/test_webapp.py} pasan sobre la versión final. El diálogo se probó además en un navegador sin interfaz durante seis rondas seguidas de borrado: cada una hizo una sola petición \arch{DELETE}, sin ventanas nativas ni excepciones.

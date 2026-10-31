@@ -1,0 +1,94 @@
+% =====================================================================
+% Seccion: Pruebas de la aplicacion con imagenes de distinto origen
+% Fragmento SIN preambulo: \input{secciones/pruebas_aplicacion}
+% El nombre del paciente se retiro de informe_generado.png a nivel de pixel.
+% =====================================================================
+\section{Pruebas de la aplicación y de los modelos}
+\label{sec:pruebas}
+
+Se probó el sistema completo con tres tipos de imagen: una ajena a la temática, material del conjunto de entrenamiento y un estudio real externo al dataset. Salvo que se indique lo contrario, las capturas corresponden a la versión previa a las correcciones (commit \arch{58b1a9e}); el comportamiento de clasificación no cambió, porque no se modificaron los modelos.
+
+\subsection{Imagen ajena a la temática}
+Al subir una imagen sin relación con la columna, la aplicación no la clasifica: el detector halla 0 de 5 discos y la rechaza con un mensaje claro (Figura~\ref{fig:apprechazo}). Esta capa cubre las imágenes que no son cortes; un recorte pequeño y en grises que no sea un disco pasaría este filtro y solo lo detendría la capa~3, hoy inactiva.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{app_rechazo.jpg}
+\caption{Rechazo de una imagen ajena a la temática: el detector halló 0 de 5 discos.}
+\label{fig:apprechazo}
+\end{figure}
+
+\subsection{Imágenes del conjunto de entrenamiento}
+Primero se analizó un corte completo del conjunto de entrenamiento con el atajo \emph{Analizar una imagen}. El detector halló los 5 discos y los cuatro modelos coincidieron en cada uno (Figura~\ref{fig:apptrain}).
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{app_imagen_train.jpg}
+\caption{Corte completo del conjunto de entrenamiento: 5 de 5 discos detectados y cuatro modelos de acuerdo.}
+\label{fig:apptrain}
+\end{figure}
+
+Después, con la versión final, se pasaron los cinco ROI originales del corte 008 del paciente 0153, que es el primer paciente del manifiesto y pertenece a entrenamiento. Los cinco coinciden con su etiqueta en los cuatro modelos (Tabla~\ref{tab:train} y Figura~\ref{fig:approi}). El resultado es el esperado, porque los modelos ya vieron estas imágenes, y por eso no mide la capacidad de generalizar: solo comprueba que la aplicación carga los modelos y conserva su comportamiento. Las cifras de generalización son las de la Sección~\ref{sec:resultados}.
+
+\begin{table}[htbp]
+\centering\small
+\caption{ROI de entrenamiento (corte 0153\_008) analizados con \arch{POST /api/predecir}. Puntaje de la clase elegida; en el SVM es un puntaje normalizado con softmax, no una probabilidad.}
+\label{tab:train}
+\begin{tabular}{llrrrrl}
+\toprule
+Nivel & Etiqueta & YOLOv8s-cls & ResNet-50 & SVM & R. Forest & Ensamble \\
+\midrule
+L1-L2 & Normal     & 0,999 & 0,939 & 0,746 & 0,954 & Normal \\
+L2-L3 & Normal     & 0,974 & 0,956 & 0,752 & 0,979 & Normal \\
+L3-L4 & Normal     & 0,822 & 0,965 & 0,746 & 0,947 & Normal \\
+L4-L5 & Protrusión & 1,000 & 0,940 & 0,754 & 0,956 & Protrusión \\
+L5-S1 & Protrusión & 1,000 & 0,930 & 0,752 & 0,977 & Protrusión \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\linewidth]{app_roi_train.png}
+\caption{ROI L4-L5 de entrenamiento en la versión final: los cuatro modelos eligen Protrusión.}
+\label{fig:approi}
+\end{figure}
+
+\subsection{Estudio externo al dataset}
+Se cargó un estudio real que no pertenece al dataset, adquirido con un equipo GE Signa Explorer de 1,5~T, mientras que los modelos se entrenaron con un Siemens. La aplicación identificó la serie T2 sagital de 12 cortes y advirtió de esa diferencia de equipo (Figura~\ref{fig:appcortes}). El detector ubicó los cinco discos pese al cambio de fabricante. Se analizaron los cortes 6 y 7, y la persona revisora completó el informe de la Figura~\ref{fig:informe}. El nombre del paciente se retiró de la imagen.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{app_cortes_externo.jpg}
+\caption{Paso Cortes con un estudio externo: cajas del detector, recomendación y aviso del equipo distinto.}
+\label{fig:appcortes}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.9\linewidth]{informe_generado.png}
+\caption{Informe generado por la aplicación para el estudio externo, con el nombre del paciente retirado.}
+\label{fig:informe}
+\end{figure}
+
+La revisión concordó en 2 de los 5 discos, L4-L5 y L5-S1, y discrepó en 3. En los tres casos marcó Normal: en L1-L2 y L3-L4 el ensamble dijo Protrusión, y en L2-L3 no fue concluyente. Las discrepancias van en la dirección que anticipan los datos: una clase Protrusión mayoritaria, concentrada en los niveles bajos, y un equipo distinto al de entrenamiento. Es un solo estudio, así que no permite estimar el desempeño externo, pero muestra el uso previsto: el sistema propone, la revisión humana decide y el desacuerdo queda registrado en el informe.
+
+\subsection{Pruebas automáticas}
+Las 30 pruebas de \arch{tests/test_webapp.py} pasan sobre la versión final (\arch{30 passed}). Con los modelos reales, la API reportó estado correcto con CPU, los cuatro modelos y el detector disponibles.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Resumen de las pruebas.}
+\label{tab:pruebas}
+\begin{tabular}{p{0.34\linewidth}p{0.56\linewidth}}
+\toprule
+Entrada & Resultado \\
+\midrule
+Imagen ajena a la temática & Rechazada: 0 de 5 discos \\
+Corte de entrenamiento & 5 de 5 discos detectados, cuatro modelos de acuerdo \\
+5 ROI de entrenamiento & 5 de 5 coinciden con la etiqueta en los cuatro modelos \\
+Estudio externo (GE, 1,5~T) & 5 discos detectados, aviso de equipo, 2 de 5 concordancias con la revisión \\
+Pruebas automáticas & 30 de 30 pasan \\
+\bottomrule
+\end{tabular}
+\end{table}

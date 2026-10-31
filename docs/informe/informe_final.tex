@@ -1,0 +1,45 @@
+% Informe final del proyecto DeepSpine. Compilar desde docs/informe/:
+%   pdflatex informe_final && bibtex informe_final && pdflatex informe_final && pdflatex informe_final
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx,booktabs,xcolor,caption,url}
+\usepackage{tikz,pgfplots}
+\usetikzlibrary{positioning,arrows.meta}
+\pgfplotsset{compat=1.16}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage[hidelinks]{hyperref}
+% Reduce una ecuacion solo si no cabe en el ancho del texto
+\newsavebox{\cajaec}
+\newcommand{\ajusta}[1]{\sbox{\cajaec}{$\displaystyle #1$}%
+  \ifdim\wd\cajaec>\linewidth\resizebox{\linewidth}{!}{\usebox{\cajaec}}\else\usebox{\cajaec}\fi}
+\graphicspath{{../guias/}{figuras/}{../resultados/}{../modelo_matematico/figuras/}}
+
+\title{DeepSpine: clasificación de discos lumbares en resonancia magnética sagital T2\\[4pt]
+\large Informe final del proyecto de Visión Artificial}
+\author{Jhon Jairo Perdomo Perdomo \and Julián Andrés Silva Morales \and Juan Manuel Tengonó Lasso}
+\date{30 de octubre de 2026}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+DeepSpine clasifica los discos intervertebrales L1-L2 a L5-S1 de una resonancia sagital T2 en tres clases: Normal, Degeneración discal y Protrusión. Este informe recoge la preparación del dataset de 35\,007 imágenes, la selección de cuatro modelos, su modelo matemático y su entrenamiento, el MVP de demostración, la simulación de resultados, la aplicación web para el radiólogo, las correcciones hechas a esa aplicación y las pruebas finales. El mejor modelo por validación, una ResNet-50 ajustada, obtuvo una exactitud de 88,9\,\% y un F1 macro de 0,769 sobre las 768 imágenes originales de prueba. Es una herramienta académica, no diagnóstica: las etiquetas las asignaron estudiantes, sin radiólogo.
+\end{abstract}
+\tableofcontents
+\clearpage
+
+\input{secciones/preparacion_dataset}
+\input{secciones/seleccion_modelos}
+\input{secciones/modelo_matematico}
+\input{secciones/entrenamiento_modelos}
+\input{secciones/mvp}
+\input{secciones/simulacion}
+\input{secciones/aplicacion_web}
+\input{secciones/pruebas_aplicacion}
+\input{secciones/conclusiones}
+
+\bibliographystyle{IEEEtran}
+\bibliography{referencias_dataset}
+\end{document}

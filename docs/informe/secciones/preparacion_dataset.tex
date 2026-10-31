@@ -100,8 +100,8 @@ El nivel más difícil es L1-L2 (en validación: precisión 0,839, recall 0,820 
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.9\linewidth]{guia_visual_5rois.png}
-\caption{Los cinco ROI (L1-L2 a L5-S1) de un corte sagital T2. \pendiente{confirmar que es la figura que se quiere en el informe o sustituirla por un montaje propio con las cajas del detector}}
+\includegraphics[width=0.9\linewidth]{rois_corte.png}
+\caption{Los cinco ROI originales (L1-L2 a L5-S1) del corte 008 del paciente 0188, tal como quedan en el dataset (128$\times$128~px).}
 \label{fig:rois}
 \end{figure}
 
@@ -198,13 +198,14 @@ Total         &              & 5\,123 & 29\,884 & 35\,007 & \\
 \begin{tikzpicture}
 \begin{axis}[
   ybar, bar width=14pt, width=0.85\linewidth, height=5.6cm,
-  symbolic x coords={Normal,Degeneración,Protrusión}, xtick=data,
+  symbolic x coords={Normal,Degeneracion,Protrusion}, xtick=data,
+  xticklabels={Normal,Degeneración,Protrusión},
   ymin=0, ymax=9800, ylabel={Imágenes (entrenamiento)},
   enlarge x limits=0.25, legend style={at={(0.5,1.04)},anchor=south,legend columns=2,font=\footnotesize},
   nodes near coords, every node near coord/.append style={font=\tiny},
   tick label style={font=\footnotesize}, ylabel style={font=\footnotesize}]
-\addplot coordinates {(Normal,771) (Degeneración,194) (Protrusión,2612)};
-\addplot coordinates {(Normal,8167) (Degeneración,8167) (Protrusión,8167)};
+\addplot coordinates {(Normal,771) (Degeneracion,194) (Protrusion,2612)};
+\addplot coordinates {(Normal,8167) (Degeneracion,8167) (Protrusion,8167)};
 \legend{Originales, Tras el aumento}
 \end{axis}
 \end{tikzpicture}
