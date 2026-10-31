@@ -1,0 +1,45 @@
+% =====================================================================
+% Seccion: MVP de demostracion (Hito 2)
+% Fragmento SIN preambulo: \input{secciones/mvp}
+% Capturas tomadas en el commit 58b1a9e, ultimo con el MVP disponible.
+% =====================================================================
+\section{MVP de demostración}
+\label{sec:mvp}
+
+Para el Hito~2 se construyó un MVP local, que se clona y se ejecuta con un solo comando: un backend FastAPI con los cuatro modelos y una interfaz estática en \arch{/mvp}. Su objetivo era demostrar la simulación de resultados y la trazabilidad de una predicción. Las capturas de esta sección se tomaron en el commit \arch{58b1a9e}. Tras presentar el hito, el MVP se retiró del proyecto (Sección~\ref{sec:arreglos}); su código sigue disponible en el historial de Git.
+
+El MVP tenía cinco pestañas: caso a caso, subir imagen, simulación, modelos y métricas, y estudio de resonancia. Esta última la agregó Juan Manuel Tengonó y fue la base de la aplicación final.
+
+\paragraph{Caso a caso y trazabilidad.} Se elige uno de los 45 casos de prueba (15 por clase) y se ejecutan los cuatro modelos. La Figura~\ref{fig:mvpcaso} muestra un error real: en \arch{caso_04}, con etiqueta Degeneración, los cuatro modelos predicen Protrusión. La Figura~\ref{fig:mvptraza} muestra el recorrido de esa imagen con valores de la ejecución: la ResNet-50 se calcula una sola vez y sus características pasan a los modelos 2, 3 y 4.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{mvp_caso.jpg}
+\caption{Pestaña Caso a caso del MVP: resultado de los cuatro modelos sobre un caso de prueba.}
+\label{fig:mvpcaso}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{mvp_trazabilidad.jpg}
+\caption{Trazabilidad de una imagen por los cuatro modelos, con tiempos y valores intermedios.}
+\label{fig:mvptraza}
+\end{figure}
+
+La pestaña \emph{Simulación} se describe aparte, en la Sección~\ref{sec:simulacion}.
+
+\paragraph{Modelos y métricas.} La pestaña reunía las métricas oficiales, las matrices de confusión, las curvas ROC y el SHA-256 de cada archivo de pesos (Figuras~\ref{fig:mvpmetricas} y~\ref{fig:mvproc}). Esta información ya no está en la aplicación: se conserva en la documentación y en la Sección~\ref{sec:resultados}.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{mvp_metricas.jpg}
+\caption{Pestaña Modelos y métricas del MVP.}
+\label{fig:mvpmetricas}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{mvp_roc.jpg}
+\caption{Curvas ROC y barras de exactitud y F1 macro en el MVP.}
+\label{fig:mvproc}
+\end{figure}

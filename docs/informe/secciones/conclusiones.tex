@@ -1,0 +1,12 @@
+% =====================================================================
+% Seccion: Conclusiones
+% Fragmento SIN preambulo: \input{secciones/conclusiones}
+% =====================================================================
+\section{Conclusiones y trabajo futuro}
+\label{sec:conclusiones}
+
+Se construyó un flujo completo: de 575 carpetas públicas a un dataset de 35\,007 imágenes dividido por paciente, cuatro modelos comparados con el mismo protocolo y una aplicación local que va del DICOM al informe firmado. La ResNet-50 ajustada es el mejor modelo por validación, con 88,9\,\% de exactitud y F1 macro de 0,769 en los originales de prueba. No alcanza el 89\,\% de la rúbrica y las diferencias entre los modelos están dentro del margen de error, por lo que la elección se apoya en la validación y no en esa diferencia.
+
+Las principales limitaciones son las etiquetas de estudiantes sin radiólogo, un único equipo de entrenamiento, la baja detección de Degeneración, el sobreajuste y el posible atajo por nivel. La prueba con un estudio externo, aunque es un solo caso, refuerza la necesidad de la revisión humana.
+
+Como trabajo futuro se propone activar la capa~3 del filtro de rechazo, obtener etiquetas validadas por un radiólogo, evaluar con estudios de otros equipos e incorporar cortes axiales para volver a separar Hernia y Abombamiento.
