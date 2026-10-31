@@ -182,8 +182,7 @@ Vision_Artificial/
 │
 ├── data/                     # Datos del proyecto
 │   ├── raw/                   # Datos originales, sin modificar (solo enlace al dataset de Mendeley)
-│   ├── processed/              # Dataset final de 35.007 imagenes (o su enlace), manifiestos y etiquetas
-│   └── external/                # Datasets de terceros / descargas externas
+│   └── processed/              # Dataset final de 35.007 imagenes (o su enlace), manifiestos y etiquetas
 │
 ├── src/                        # Codigo fuente reutilizable (paquete Python)
 │   ├── data/                    # Carga y preprocesamiento de datos
