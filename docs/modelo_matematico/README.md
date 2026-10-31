@@ -242,7 +242,7 @@ $$P_{\text{ens}}(k \mid x) = \frac{1}{M}\sum_{m=1}^{M} p_m(k \mid x), \qquad \ha
 
 El ensamble **no se entrena**: todos los modelos pesan igual ($1/4$) y no tiene parámetros que aprender. Se calcula después, con las salidas de los 4 modelos ya entrenados. Por eso es un **extra** y no un quinto modelo.
 
-**Ejemplo real** (caso 3 de la demo: paciente 0319, L1-L2, etiqueta real Degeneración):
+**Ejemplo real** (imagen de test: paciente 0319, L1-L2, etiqueta real Degeneración):
 
 | Modelo | Degeneración | Normal | Protrusión | Predicción |
 |---|---|---|---|---|

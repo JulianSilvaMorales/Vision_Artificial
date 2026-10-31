@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Arranca el MVP en Linux, macOS o WSL: crea el entorno la primera vez, instala dependencias, descarga los modelos
-# y levanta el servidor. Uso, desde la raiz del repo: bash webapp/iniciar_mvp.sh
+# Arranca la aplicacion en Linux, macOS o WSL: crea el entorno la primera vez, instala dependencias, descarga los modelos
+# y levanta el servidor. Uso, desde la raiz del repo: bash webapp/iniciar_app.sh
 set -e
 cd "$(dirname "$0")/.."
 
-VENV=${MVP_VENV:-.venv-mvp}     # otro nombre si el mismo clon ya tiene un .venv-mvp creado desde Windows
+VENV=${DEEPSPINE_VENV:-.venv-app}     # otro nombre si el mismo clon ya tiene un .venv-app creado desde Windows
 PY=$(command -v python3.12 || command -v python3 || true)
 if [ -z "$PY" ]; then
   echo "[ERROR] No se encontro Python 3. Instala Python 3.12 (Ubuntu: sudo apt install python3 python3-venv)."
@@ -27,8 +27,8 @@ else
   echo "[2/4] Dependencias ya instaladas."
 fi
 
-echo "[3/4] Imagenes de demostracion (Git LFS) y modelos del Release ..."
-git lfs pull > /dev/null 2>&1 || echo "      (git lfs no disponible: si las imagenes de data/demo no se ven, instala Git LFS y ejecuta git lfs pull)"
+echo "[3/4] Detector de discos (Git LFS) y modelos del Release ..."
+git lfs pull > /dev/null 2>&1 || echo "      (git lfs no disponible: si falta el detector de discos, instala Git LFS y ejecuta git lfs pull)"
 "$VENV/bin/python" scripts/descargar_modelos.py
 
 echo "[4/4] Iniciando el servidor en http://localhost:8000  (Ctrl+C para detenerlo)"

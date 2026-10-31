@@ -5,7 +5,7 @@ Ejecutar desde la raiz del repo:
 y abrir http://localhost:8000 (aplicacion) o http://localhost:8000/docs (documentacion de la API).
 
 Al arrancar carga los 4 modelos (si estan en models/), asi la primera prediccion no espera. Si la variable
-MVP_ABRIR_NAVEGADOR tiene una URL (la ponen los scripts webapp/iniciar_mvp.*), abre el navegador cuando el
+DEEPSPINE_ABRIR_NAVEGADOR tiene una URL (la ponen los scripts webapp/iniciar_app.*), abre el navegador cuando el
 servidor ya esta listo.
 
 Capas: api/routes (HTTP) -> schemas (validacion) -> services (logica) -> src/inference (modelos).
@@ -45,7 +45,7 @@ async def ciclo_de_vida(_app):
         print(f"Detector de discos cargado en {estudios_service.precargar_detector()} s", flush=True)
     except EstudioError as e:       # sin el detector la pestana de estudios no funciona, pero el resto de la app si
         print(f"[AVISO] {e.mensaje}", flush=True)
-    url = os.environ.get("MVP_ABRIR_NAVEGADOR")
+    url = os.environ.get("DEEPSPINE_ABRIR_NAVEGADOR")
     if url:
         # uvicorn empieza a aceptar conexiones justo despues de este punto
         threading.Timer(1.0, webbrowser.open, args=[url]).start()

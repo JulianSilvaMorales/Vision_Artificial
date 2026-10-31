@@ -49,7 +49,7 @@ async function cargarEstado() {
   } catch {
     e.className = "estado mal";
     t.textContent = "Sin conexión con el servidor";
-    e.title = "Abre webapp/iniciar_mvp.bat (o .sh) y recarga la página";
+    e.title = "Abre webapp/iniciar_app.bat (o .sh) y recarga la página";
   }
 }
 
