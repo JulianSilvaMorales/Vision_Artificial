@@ -51,7 +51,14 @@ export function confirmar({ titulo, texto, aceptar, peligro = false }) {
   si.className = peligro ? "secundario peligro" : "principal";
   d.returnValue = "";
   d.showModal();
-  return new Promise((resolver) => d.addEventListener("close", () => resolver(d.returnValue === "si"), { once: true }));
+  return new Promise((resolver) => {
+    const alCerrar = () => {
+      if (d.open) return;       // "close" atrasado del dialogo anterior: este sigue abierto
+      d.removeEventListener("close", alCerrar);
+      resolver(d.returnValue === "si");
+    };
+    d.addEventListener("close", alCerrar);
+  });
 }
 
 // Avisos breves abajo a la derecha
