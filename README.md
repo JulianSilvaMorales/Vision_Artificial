@@ -219,11 +219,10 @@ Vision_Artificial/
 │       └── clinica/               # Interfaz para el radiologo (HTML, CSS y JS sin compilacion)
 │
 ├── tests/                       # Pruebas del backend de la aplicacion
-├── docs/                        # Guias, resultados (docs/resultados/), modelo matematico (docs/modelo_matematico/) y referencias
-└── assets/                      # Imagenes/recursos usados en el README
+└── docs/                        # Guias, resultados (docs/resultados/), modelo matematico (docs/modelo_matematico/) y referencias
 ```
 
-Contenido actual y previsto de `scripts/` y `notebooks/`:
+Contenido de `scripts/`, `notebooks/` y `src/`:
 
 | Ruta | Estado | Para que sirve |
 |---|---|---|
@@ -256,12 +255,14 @@ El dataset de 35.007 imagenes no se sube al repo, para no agotar la cuota de LFS
   !models/preetiquetado_semilla_v2.pt
   ```
   El resto de los `.pt` y `.h5` de `models/` sigue ignorado.
-- `.gitignore` (entrenamiento y aplicacion): se ignoran el dataset descomprimido (`data/processed/train/`, `val/`, `test/` y su zip), `notebooks/temporal/`, los `models/*.joblib` y `models/*.npz` (los pesos van en el GitHub Release) y los entornos `.venv-app/` (scripts de arranque) y `.venv-mvp/` (versiones anteriores).
+- `.gitignore` (entrenamiento y aplicacion): se ignoran el dataset descomprimido (`data/processed/train/`, `val/`, `test/` y su zip), los `models/*.joblib` y `models/*.npz` (los pesos van en el GitHub Release) y los entornos `.venv-app/` (scripts de arranque) y `.venv-mvp/` (versiones anteriores).
 - `.gitattributes`: se fijaron los finales de linea de los scripts de arranque (`*.sh` con LF y `*.bat` con CRLF), para que funcionen al clonar en cualquier sistema. Las reglas de Git LFS no cambiaron.
 
 ## Instalacion
 
-Requisitos: Python 3.10 o superior y Git LFS.
+Esta instalacion es para el pipeline de datos y el entrenamiento; para usar la aplicacion web basta su script de arranque (ver [Aplicacion web](#aplicacion-web)).
+
+Requisitos: Python 3.12 y Git LFS.
 
 ```
 git lfs install
@@ -271,8 +272,6 @@ python -m venv venv
 venv\Scripts\activate          # en Linux/macOS: source venv/bin/activate
 pip install -r requirements.txt
 ```
-
-Las dependencias del frontend se documentaran cuando este definido.
 
 ## Uso
 
