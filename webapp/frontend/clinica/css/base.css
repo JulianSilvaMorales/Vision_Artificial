@@ -113,6 +113,8 @@ main { flex: 1; min-height: 0; display: flex; }
 .aviso-ok { border-left-color: var(--ok); }
 dialog { background: var(--panel); color: var(--texto); border: 1px solid var(--borde-fuerte); border-radius: 14px; padding: 20px 24px; width: min(860px, 94vw); max-height: 90vh; box-shadow: var(--sombra); }
 dialog::backdrop { background: rgba(0, 0, 0, .6); }
+#dlg-confirmar { width: min(460px, 94vw); }
+.acciones-dialogo { justify-content: flex-end; margin: 18px 0 0; }
 .dlg-cabecera { display: flex; justify-content: space-between; align-items: center; }
 .sub { color: var(--suave); margin: 0 0 16px; }
 

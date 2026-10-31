@@ -41,6 +41,19 @@ export const guardado = {
   borrar(clave) { try { localStorage.removeItem(clave); } catch { /* sin almacenamiento */ } },
 };
 
+// Confirmacion dentro de la pagina (no la ventana del navegador). Devuelve una promesa con true si se acepta;
+// Cancelar, Esc o cerrar el dialogo dan false.
+export function confirmar({ titulo, texto, aceptar, peligro = false }) {
+  const d = $("#dlg-confirmar"), si = $("#confirmar-si");
+  $("#confirmar-titulo").textContent = titulo;
+  $("#confirmar-texto").textContent = texto;
+  si.textContent = aceptar;
+  si.className = peligro ? "secundario peligro" : "principal";
+  d.returnValue = "";
+  d.showModal();
+  return new Promise((resolver) => d.addEventListener("close", () => resolver(d.returnValue === "si"), { once: true }));
+}
+
 // Avisos breves abajo a la derecha
 export function avisar(texto, tipo = "info") {
   const caja = $("#avisos");

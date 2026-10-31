@@ -1,7 +1,7 @@
 // Paso 4: informe con el resultado del modelo y, al lado, la valoracion y las observaciones del radiologo.
 // Las observaciones no salen del navegador: se guardan en localStorage (borrador) y en el PDF que se imprima.
 import { fraseGeneral, resumenEstudio } from "./analisis.js";
-import { $, $$, E, ETIQ, avisar, esc, guardado, serieActual, urlCorte } from "./estado.js";
+import { $, $$, E, ETIQ, avisar, confirmar, esc, guardado, serieActual, urlCorte } from "./estado.js";
 import { alEntrarEn, irA } from "./nav.js";
 import { claseColor } from "./resultados.js";
 import { cajasSVG } from "./visor.js";
@@ -62,10 +62,11 @@ function pintarFormulario() {
   $("#btn-borrar").addEventListener("click", borrarEstudio);
 }
 
-function finalizar(sinRevisar) {
+async function finalizar(sinRevisar) {
   const nombre = (inf.campos.radiologo || "").trim();
   if (!nombre) { avisar("Escribe el nombre del radiólogo que revisa antes de finalizar.", "error"); $("#f-radiologo").focus(); return; }
-  if (sinRevisar && !confirm(`Hay ${sinRevisar} disco(s) sin tu valoración. En el informe figurarán como "Sin revisar". ¿Finalizar igual?`)) return;
+  if (sinRevisar && !await confirmar({ titulo: "¿Finalizar el informe?", aceptar: "Finalizar igual",
+    texto: `Hay ${sinRevisar} disco${sinRevisar === 1 ? "" : "s"} sin tu valoración. En el informe figurará${sinRevisar === 1 ? "" : "n"} como "Sin revisar".` })) return;
   inf.firma = { nombre, fecha: new Date().toLocaleString("es", { dateStyle: "long", timeStyle: "short" }) };
   guardar(); pintarInforme();
   avisar("Informe finalizado. Ya puedes imprimirlo o guardarlo como PDF.", "ok");
@@ -120,7 +121,8 @@ async function descargarPNG() {
 }
 
 async function borrarEstudio() {
-  if (!confirm("¿Borrar el estudio del servidor y el borrador del informe? No se puede deshacer.")) return;
+  if (!await confirmar({ titulo: "¿Borrar el estudio?", aceptar: "Borrar estudio", peligro: true,
+    texto: "Se borrarán el estudio del servidor y el borrador del informe. No se puede deshacer." })) return;
   await fetch(`/api/estudios/${E.estudio.id}`, { method: "DELETE" }).catch(() => {});
   guardado.borrar(clave());
   E.estudio = null;                    // asi la sesion no se vuelve a guardar al recargar
