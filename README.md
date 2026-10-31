@@ -121,7 +121,6 @@ Reglas que cumplen todos los scripts:
 | Codigo de entrenamiento, evaluacion e inferencia | `scripts/entrenamiento/` y `src/` | Si |
 | Descripcion y hashes SHA-256 de los pesos | `models/README.md` | Si |
 | **Pesos de los 4 modelos** (`yolov8s_cls.pt`, `resnet50.pt`, `svm.joblib`, `random_forest.joblib`, ~121 MB en total) | **GitHub Release** [`modelos-v1.0`](https://github.com/JulianSilvaMorales/Vision_Artificial/releases/tag/modelos-v1.0); se descargan en `models/` con `python scripts/descargar_modelos.py` | No: van en la Release para no gastar la cuota de Git LFS |
-| Casos de demostracion (45 originales de test) y sus predicciones registradas | `data/demo/` | Si |
 | Embeddings, checkpoints por epoca y experimentos descartados | `~/deepspine_runs/` de quien entrena | No: se regeneran con los scripts |
 | Imagenes del dataset de 35k (`DeepSpine_Dataset_35k.zip`) | [Google Drive](https://drive.google.com/drive/folders/1ZbTE1gb6zv7F2qEBmwRXzHFveLyRrl4I?usp=drive_link) / `scripts/build_dataset.py` | No |
 
@@ -132,55 +131,20 @@ Reglas que cumplen todos los scripts:
 4. **Ajuste con validacion** para intentar llegar al 89 %: varias semillas, regularizacion de la ResNet (suavizado de etiquetas y aumento en linea), ensambles y correccion por la proporcion de clases. Se adopto la ResNet regularizada (mejor F1 en validacion). SVM y Random Forest pasaron a usar las caracteristicas de esa ResNet; su F1 en validacion subio de 0,65 a 0,80 (SVM) y de 0,60 a 0,79 (Random Forest). La correccion por proporcion se descarto porque hundia la deteccion de Degeneracion.
 5. **Evaluacion final:** los 4 modelos se evaluaron una sola vez en test, con las metricas de la tabla de [Resultados](#resultados).
 
-## Demo (MVP)
+## Aplicacion web
 
-> **TEMPORAL.** Este MVP existe solo para la demostracion del Hito 2. **No es la webapp final.** Cuando Juan Manuel Tengono tenga la webapp formal funcionando, debe **borrar los archivos temporales del MVP** (lista abajo) para no dejar archivos innecesarios en el repo, y reemplazar esta seccion.
-
-Aplicacion local (backend FastAPI + pagina web) que consume los 4 modelos y demuestra la **simulacion de resultados** y la **trazabilidad**: cada prediccion se puede seguir desde la imagen (paciente, nivel, etiqueta real) por cada paso de los modelos, y se comprueba que reproduce la evaluacion oficial. Usa 45 casos de test incluidos en el repo, asi que no necesita el dataset de 35k ni GPU. Funciona en Windows, Linux y macOS.
+Aplicacion local para el radiologo: carga un estudio de resonancia (`.IMA`, `.dcm`, carpeta o `.zip`), recomienda los cortes centrales, detecta los 5 discos L1-S1, los clasifica con el ensamble de los 4 modelos y prepara un informe imprimible con la valoracion del radiologo. Es un backend FastAPI con una interfaz en HTML, CSS y JavaScript sin compilacion. Funciona en Windows, Linux y macOS, sin GPU ni dataset, y sin internet despues de la primera instalacion.
 
 **Arranque en un comando** (requisitos: Git, Git LFS y Python; desde la raiz del repo clonado):
 
 | Sistema | Comando |
 |---|---|
-| Windows | `webapp\iniciar_mvp.bat` (o doble clic en el archivo) |
-| Linux / macOS / WSL | `bash webapp/iniciar_mvp.sh` |
+| Windows | `webapp\iniciar_app.bat` (o doble clic en el archivo) |
+| Linux / macOS / WSL | `bash webapp/iniciar_app.sh` |
 
-El script crea el entorno `.venv-mvp/`, instala las dependencias (solo la primera vez), descarga las imagenes de demostracion (Git LFS) y los 4 pesos del Release `modelos-v1.0` con verificacion SHA-256, y levanta el servidor en **http://localhost:8000**.
+El script crea el entorno `.venv-app/`, instala las dependencias (solo la primera vez), trae el detector de discos (Git LFS) y los 4 pesos del Release `modelos-v1.0` con verificacion SHA-256, y levanta el servidor en **http://localhost:8000**.
 
-**Guia completa** (requisitos e instalacion por sistema, paso a paso manual, comprobacion, problemas frecuentes, pestanas, API y trazabilidad): [`webapp/README.md`](webapp/README.md).
-
-### Siguiente paso: webapp formal (Juan Manuel Tengono)
-
-El MVP ya resuelve el consumo de los 4 modelos; falta la aplicacion ordenada y presentable. Detalle en [`webapp/README.md` · Siguientes pasos](webapp/README.md#siguientes-pasos-para-la-webapp-formal).
-
-1. **Reutilizar sin cambios** `src/inference/predictor.py` (logica de los modelos) y la API de `webapp/backend/` (endpoints, esquemas y servicios en capas).
-2. **Construir el frontend en React** en `webapp/frontend/src/`:
-   - llamadas a la API en `services/`;
-   - una pagina por cada pestana del MVP en `pages/`;
-   - el diagrama de trazabilidad, las tarjetas de prediccion y las matrices en `components/`.
-3. **Conectar React con el backend:** `CORSMiddleware` en `webapp/backend/main.py` para el puerto de desarrollo de React. En produccion, servir la *build* de React desde FastAPI.
-4. **Borrar los archivos temporales del MVP** cuando la webapp formal cubra lo que hace el MVP (caso a caso, subir imagen, simulacion y metricas). Ver la tabla de abajo.
-5. **Mantener en la webapp formal:**
-   - el aviso "academica, no diagnostica";
-   - la aclaracion de que los casos de demostracion no dan la exactitud oficial;
-   - la comprobacion de reproducibilidad;
-   - CPU por defecto.
-
-**Que borrar y que conservar al terminar la webapp formal**
-
-| Archivo o carpeta | Que hacer | Por que |
-|---|---|---|
-| `webapp/frontend/mvp/` (index.html, styles.css, app.js) | **Borrar** | Es la pagina temporal; la reemplaza el frontend en React |
-| `webapp/iniciar_mvp.bat`, `webapp/iniciar_mvp.sh` | **Borrar** (o reemplazarlos por scripts de arranque de la webapp formal) | Arrancan el MVP |
-| `.venv-mvp*/` en `.gitignore` | **Quitar la linea** si se borran los scripts | Solo la usan esos scripts |
-| `app.mount("/", ...)` en `webapp/backend/main.py` | **Cambiar** para servir la *build* de React, o quitarlo | Hoy sirve la pagina del MVP |
-| `webapp/README.md` y la seccion *Demo (MVP)* de este README | **Reescribir** para la webapp formal | Describen el MVP |
-| `webapp/backend/` (API, esquemas, servicios) | **Conservar** y mejorar | Es la base del backend formal; no es temporal |
-| `src/inference/predictor.py` | **Conservar** | Logica de los 4 modelos; la usa cualquier backend |
-| `scripts/descargar_modelos.py` | **Conservar** | Descarga y verifica los pesos del Release |
-| `data/demo/` y `scripts/demo/` | **Conservar** si la webapp formal mantiene la simulacion y la trazabilidad (recomendado para la sustentacion); si no, borrar los dos juntos | Son los casos de test de la demostracion |
-
-No borres nada del MVP antes de que la webapp formal funcione: hasta entonces es lo unico que demuestra los modelos.
+**Guia completa** (flujo, privacidad, requisitos por sistema, paso a paso manual, problemas frecuentes, rechazo de imagenes y API): [`webapp/README.md`](webapp/README.md). Las metricas de los modelos estan en [Resultados](#resultados) y en `docs/resultados/`.
 
 ## Arquitectura del proyecto
 
@@ -200,11 +164,11 @@ Peticion HTTP -> api/routes/ -> schemas/ (validacion) -> services/ (logica) -> s
 
 Regla clave: las rutas (`api/routes/`) nunca llaman directo al codigo de inferencia (`src/inference/`). Siempre pasan por `services/`, que orquesta la logica. Esto separa "como entra la peticion" de "que hace el proyecto", y permite agregar mas adelante una capa `repositories/` (para base de datos) sin reorganizar nada, si el proyecto llega a necesitarla.
 
-Nota: el backend y el frontend los desarrolla otro integrante del equipo; las tecnologias concretas se documentaran aqui cuando esten definidas. La app debe usar los cuatro modelos entrenados; los modelos SVM y Random Forest requieren primero calcular los embeddings de la ResNet-50 ajustada (modelo 2) y aplicar el escalador y el PCA guardados junto al modelo. Todo eso lo hace `src/inference/predictor.py`, que la capa `services/` puede llamar directamente.
+La app usa los cuatro modelos entrenados; los modelos SVM y Random Forest requieren primero calcular los embeddings de la ResNet-50 ajustada (modelo 2) y aplicar el escalador y el PCA guardados junto al modelo. Todo eso lo hace `src/inference/predictor.py`, que la capa `services/` llama directamente.
 
-### 3. Frontend: organizacion por componentes (React)
+### 3. Frontend: modulos de JavaScript sin compilacion
 
-`webapp/frontend/` sigue la convencion estandar de proyectos React: separar piezas de UI reutilizables (`components/`) de vistas completas (`pages/`), y centralizar las llamadas a la API en `services/` para no repetir codigo de fetch/axios en cada componente.
+`webapp/frontend/clinica/` usa HTML, CSS y modulos ES, sin dependencias ni compilacion, para arrancar con un solo comando y funcionar sin internet. Cada paso de la aplicacion tiene su modulo en `js/`, y las llamadas a la API estan centralizadas en `js/api.js`.
 
 ## Estructura del proyecto
 
@@ -219,7 +183,6 @@ Vision_Artificial/
 ├── data/                     # Datos del proyecto
 │   ├── raw/                   # Datos originales, sin modificar (solo enlace al dataset de Mendeley)
 │   ├── processed/              # Dataset final de 35.007 imagenes (o su enlace), manifiestos y etiquetas
-│   ├── demo/                    # 45 casos de test para el MVP (imagenes + casos.csv)
 │   └── external/                # Datasets de terceros / descargas externas
 │
 ├── src/                        # Codigo fuente reutilizable (paquete Python)
@@ -235,7 +198,7 @@ Vision_Artificial/
 │   ├── etiquetado/                # Semilla, split por paciente y registro de etiquetas
 │   ├── guias_visuales/             # Figuras de la guia de anotacion
 │   ├── entrenamiento/              # Entrenamiento, evaluacion y comparacion de los 4 modelos
-│   ├── demo/                       # Seleccion de los casos de demostracion del MVP
+│   ├── calibrar_rechazo.py         # Calibra el umbral con el que la app rechaza imagenes atipicas
 │   ├── descargar_modelos.py        # Descarga los 4 pesos del GitHub Release y verifica su SHA-256
 │   └── build_dataset.py            # Dataset final de 35.007 imagenes
 │
@@ -243,26 +206,19 @@ Vision_Artificial/
 │
 ├── notebooks/                  # Notebooks (Colab): preetiquetado, entrenamiento de los 4 modelos y comparacion
 │
-├── webapp/                     # MVP de demostracion (ver webapp/README.md); base de la webapp formal
+├── webapp/                     # Aplicacion final (ver webapp/README.md)
 │   ├── backend/                 # API FastAPI que sirve los 4 modelos (arquitectura en capas)
-│   │   ├── main.py                # App; sirve la API, /resultados y la pagina del MVP
-│   │   ├── api/routes/            # Endpoints (salud, modelos, casos, predecir, simulacion)
+│   │   ├── main.py                # App; sirve la API y la aplicacion
+│   │   ├── api/routes/            # Endpoints (salud, predecir, estudios)
 │   │   ├── core/                   # Configuracion, variables de entorno
 │   │   ├── services/                # Logica de negocio, orquesta la prediccion
 │   │   ├── schemas/                  # Validacion de datos de entrada/salida
 │   │   └── utils/                     # Helpers propios del backend
 │   │
-│   └── frontend/                # Interfaz web (React, pendiente)
-│       ├── mvp/                   # Pagina temporal del MVP (HTML, CSS y JS sin dependencias)
-│       ├── public/                # Archivos estaticos (favicon, index.html)
-│       └── src/
-│           ├── assets/              # Imagenes/iconos/estilos de la app
-│           ├── components/           # Piezas de UI reutilizables
-│           ├── pages/                 # Vistas completas
-│           ├── services/               # Llamadas a la API del backend
-│           └── utils/                   # Helpers propios del frontend
+│   └── frontend/
+│       └── clinica/               # Interfaz para el radiologo (HTML, CSS y JS sin compilacion)
 │
-├── tests/                       # Pruebas unitarias del codigo en src/
+├── tests/                       # Pruebas del backend de la aplicacion
 ├── docs/                        # Guias, resultados (docs/resultados/), modelo matematico (docs/modelo_matematico/) y referencias
 └── assets/                      # Imagenes/recursos usados en el README
 ```
@@ -279,7 +235,7 @@ Contenido actual y previsto de `scripts/` y `notebooks/`:
 | `notebooks/00_entrenamiento_detector_discos.ipynb` | En el repo | Entrenamiento del detector de discos (YOLO) usado para recortar los ROI |
 | `notebooks/01_preetiquetado_semilla_v2.ipynb` | En el repo | Modelo semilla (YOLOv8-cls) para preetiquetar los ROI; la revision humana posterior produce `etiquetas_revisadas.csv` |
 | `scripts/entrenamiento/` | En el repo | Entrenamiento y evaluacion de los cuatro modelos y su comparacion (`01_yolov8s_cls.py` a `05_comparar_modelos.py`); se ejecutan desde la terminal en Ubuntu (WSL2) en lugar de cuadernos |
-| `scripts/demo/`, `scripts/descargar_modelos.py` | En el repo | Seleccion de los 45 casos de demostracion y descarga verificada de los pesos del Release |
+| `scripts/calibrar_rechazo.py`, `scripts/descargar_modelos.py` | En el repo | Calibracion del rechazo de imagenes atipicas y descarga verificada de los pesos del Release |
 | `src/` | En el repo | Codigo comun: indice del dataset y verificacion de fuga (`data/`), ResNet-50 (`models/`), evaluacion (`training/`), metricas y graficas (`utils/`) y prediccion para la app (`inference/predictor.py`) |
 
 Los scripts de `scripts/` se conservan tal como se usaron durante el trabajo; las rutas de entrada y salida se configuran dentro de cada uno (ver `if __name__ == "__main__"` o sus argumentos).
@@ -300,7 +256,7 @@ El dataset de 35.007 imagenes no se sube al repo, para no agotar la cuota de LFS
   !models/preetiquetado_semilla_v2.pt
   ```
   El resto de los `.pt` y `.h5` de `models/` sigue ignorado.
-- `.gitignore` (entrenamiento y MVP): se ignoran el dataset descomprimido (`data/processed/train/`, `val/`, `test/` y su zip), `notebooks/temporal/`, los `models/*.joblib` y `models/*.npz` (los pesos van en el GitHub Release) y el entorno `.venv-mvp/` que crean los scripts de arranque del MVP.
+- `.gitignore` (entrenamiento y aplicacion): se ignoran el dataset descomprimido (`data/processed/train/`, `val/`, `test/` y su zip), `notebooks/temporal/`, los `models/*.joblib` y `models/*.npz` (los pesos van en el GitHub Release) y los entornos `.venv-app/` (scripts de arranque) y `.venv-mvp/` (versiones anteriores).
 - `.gitattributes`: se fijaron los finales de linea de los scripts de arranque (`*.sh` con LF y `*.bat` con CRLF), para que funcionen al clonar en cualquier sistema. Las reglas de Git LFS no cambiaron.
 
 ## Instalacion
