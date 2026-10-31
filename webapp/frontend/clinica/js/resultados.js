@@ -105,11 +105,16 @@ function tarjeta(r) {
   </article>`;
 }
 
+// La capa 3 del rechazo solo actua con models/umbral_rechazo.json vigente
+const sinFiltro = () => E.resultados.some((c) => Object.values(c.niveles).some((d) =>
+  ["sin_umbral", "umbral_obsoleto"].includes(d.traza?.pasos?.validacion?.capa3)));
+
 function pintarDiscos() {
   if (!E.resultados.length) { $("#conclusion").innerHTML = ""; $("#discos").innerHTML = ""; return; }
   const res = resumenEstudio(E.resultados);
   $("#conclusion").innerHTML = `<h2>Conclusión</h2><p>${esc(fraseGeneral(res, E.resultados))}</p>
-    <p class="ayuda">Clase del ensamble de los 4 modelos en cada corte. Haz clic en un disco para ver sus recortes y resaltarlo en la imagen.</p>`;
+    <p class="ayuda">Clase del ensamble de los 4 modelos en cada corte. La confianza es orientativa: una regla fija según cuántos cortes y modelos coinciden, no una probabilidad calibrada. Haz clic en un disco para ver sus recortes y resaltarlo en la imagen.</p>
+    ${sinFiltro() ? `<p class="alerta">El filtro de recortes atípicos no está calibrado: un disco muy distinto a los del entrenamiento no se descarta.</p>` : ""}`;
   $("#discos").innerHTML = res.map(tarjeta).join("");
   $$("#discos .disco-cab").forEach((b) => b.addEventListener("click", () => {
     const n = b.closest(".disco").dataset.nivel;

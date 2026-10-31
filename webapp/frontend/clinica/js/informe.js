@@ -7,7 +7,7 @@ import { claseColor } from "./resultados.js";
 import { cajasSVG } from "./visor.js";
 
 const CAMPOS = [
-  { id: "estudio", etiqueta: "Identificación del estudio", tipo: "text", ayuda: "Opcional. Los datos del DICOM no se usan.", ej: "Estudio 2026-118, hombre de 54 años" },
+  { id: "estudio", etiqueta: "Identificación del estudio", tipo: "text", ayuda: "Opcional. No escribas datos que identifiquen al paciente: se guardan en este navegador.", ej: "Estudio 2026-118" },
   { id: "hallazgos", etiqueta: "Hallazgos", frases: ["Hallazgos concordantes con el análisis automático.", "Sin estenosis significativa del canal central.",
     "Disminución de la señal en T2 (deshidratación) del disco ", "Fisura anular en "] },
   { id: "impresion", etiqueta: "Impresión", frases: ["Cambios degenerativos discales en ", "Protrusión discal en ", "Sin alteraciones discales significativas."] },
@@ -102,8 +102,8 @@ function pintarHoja() {
     <div class="hoja-cuerpo"><div><h3>Hallazgos</h3><p>${t("hallazgos")}</p><h3>Impresión</h3><p>${t("impresion")}</p>
       <h3>Recomendación</h3><p>${t("recomendacion")}</p></div>${imagenHoja()}</div>
     <footer class="hoja-pie"><p class="firma">${inf.firma ? `Revisado por <strong>${esc(inf.firma.nombre)}</strong> · ${esc(inf.firma.fecha)}` : "<strong>Borrador</strong> · sin finalizar"}</p>
-      <p>Herramienta de apoyo con fines académicos: clasificación automática de discos L1-S1 con 4 modelos (YOLOv8s-cls, ResNet-50, SVM y Random Forest).
-      La decisión diagnóstica corresponde al radiólogo.</p></footer>`;
+      <p>Herramienta académica, no diagnóstica: clasificación automática de discos L1-S1 con 4 modelos (YOLOv8s-cls, ResNet-50, SVM y Random Forest),
+      entrenados con etiquetas asignadas por estudiantes, sin radiólogo. La decisión diagnóstica corresponde al radiólogo.</p></footer>`;
 }
 
 export function pintarInforme() { pintarFormulario(); pintarHoja(); }
