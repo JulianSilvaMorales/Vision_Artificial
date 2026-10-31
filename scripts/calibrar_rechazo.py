@@ -5,11 +5,11 @@ del SVM, y toma el percentil indicado (99 por defecto) como umbral. Guarda model
 del PCA usado: si el modelo cambia, la webapp avisa de que el umbral esta obsoleto.
 
 Uso (desde la raiz del repo, con los 4 modelos en models/):
-    python scripts/demo/calibrar_rechazo.py --rois <carpeta con ROI de validacion> [--negativas <carpeta con imagenes que
+    python scripts/calibrar_rechazo.py --rois <carpeta con ROI de validacion> [--negativas <carpeta con imagenes que
         NO son discos>] [--percentil 99]
 
 --rois busca PNG/JPG de forma recursiva; por defecto usa solo los originales (nombre con "__orig"), no las copias aumentadas.
-Con --negativas informa cuantas de esas imagenes se rechazan y cuantas de los casos demo (data/demo) se aceptan.
+Con --negativas informa cuantas de esas imagenes se rechazan.
 """
 import argparse
 import json
@@ -19,7 +19,7 @@ from pathlib import Path
 
 import numpy as np
 
-RAIZ = Path(__file__).resolve().parents[2]
+RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 
 from src.inference.predictor import Predictor, abrir_imagen      # noqa: E402
@@ -64,10 +64,6 @@ def main():
         pca_huella=huella_pca(pred._cargar("svm")["pca"]), generado=date.today().isoformat()), indent=2), encoding="utf-8")
     print(f"Umbral guardado en {a.salida}")
 
-    demo = listar(RAIZ / "data" / "demo" / "imagenes")
-    if demo:
-        d_demo = distancias(pred, demo)
-        print(f"Casos demo aceptados: {int((d_demo <= umbral).sum())} / {len(demo)} (deben ser todos)")
     if a.negativas:
         neg = listar(a.negativas)
         d_neg = distancias(pred, neg)

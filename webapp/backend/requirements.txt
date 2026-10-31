@@ -1,4 +1,4 @@
-# Dependencias del MVP (backend + inferencia de los 4 modelos). Probado con Python 3.12.
+# Dependencias de la aplicacion (backend + inferencia de los 4 modelos). Probado con Python 3.12.
 # scikit-learn debe ser 1.9.1 para cargar models/svm.joblib y models/random_forest.joblib.
 fastapi
 uvicorn
@@ -11,6 +11,6 @@ scikit-learn==1.9.1
 torch
 torchvision
 ultralytics
-pi-heif       # ultralytics lo instala solo si falta; se fija aqui para que la demo no dependa de internet
+pi-heif       # ultralytics lo instala solo si falta; se fija aqui para que la aplicacion no dependa de internet
 pydicom
 opencv-python-headless

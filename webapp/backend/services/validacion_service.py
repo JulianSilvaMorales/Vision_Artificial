@@ -4,7 +4,7 @@ Los 4 modelos siempre eligen una de las 3 clases, sea cual sea la imagen. Este f
 1. Formato: la imagen debe ser (casi) en escala de grises y de un tamano razonable.
 2. Tipo: casi cuadrada y pequena = ROI; grande o alargada = corte completo (se manda al detector de discos).
 3. Fuera de distribucion: distancia de Mahalanobis del embedding de la ResNet-50 en el espacio PCA del SVM, contra un
-   umbral calibrado con ROI de validacion (models/umbral_rechazo.json, ver scripts/demo/calibrar_rechazo.py).
+   umbral calibrado con ROI de validacion (models/umbral_rechazo.json, ver scripts/calibrar_rechazo.py).
    Si el archivo del umbral no existe, esta capa no se aplica y la respuesta lo indica.
 """
 import hashlib
