@@ -1,0 +1,77 @@
+% =====================================================================
+% DeepSpine: artículo en formato IEEE de conferencia (versión en español)
+% Plantilla del curso: hoja carta, dos columnas, Times, "TABLA I" encima
+% y "Fig. 1" debajo, máximo tres niveles de título (III. / A. / 1)).
+% Compilar: pdflatex -> bibtex -> pdflatex -> pdflatex
+% (en Overleaf basta con subir la carpeta y compilar main.tex).
+% =====================================================================
+\documentclass[conference,letterpaper]{IEEEtran}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands,es-tabla]{babel}
+\usepackage{amsmath}
+% Las tablas y figuras nunca aparecen antes del punto del texto donde se escriben
+\usepackage{flafter}
+\usepackage{graphicx,booktabs,array,xcolor}
+\usepackage{url}
+\def\UrlBreaks{\do\_\do\-\do/\do.}
+\usepackage{tikz,pgfplots}
+\usetikzlibrary{positioning,arrows.meta}
+\pgfplotsset{compat=1.16}
+\pgfkeys{/pgf/number format/.cd,1000 sep={\,},use comma}
+\graphicspath{{figuras/}}
+% La plantilla rotula "TABLA I", "Fig. 1" y "Abstract"
+\addto\captionsspanish{\renewcommand{\tablename}{TABLA}\renewcommand{\figurename}{Fig.}\renewcommand{\abstractname}{Abstract}}
+\renewcommand{\IEEEkeywordsname}{Palabras clave}
+
+\begin{document}
+
+\title{DeepSpine: clasificación de discos lumbares en resonancia magnética sagital T2}
+
+\author{\IEEEauthorblockN{Jhon Jairo Perdomo Perdomo, Julián Andrés Silva Morales, Juan Manuel Tengonó Lasso}
+\IEEEauthorblockA{\textit{Programa de Ingeniería de Software, Facultad de Ingeniería, Universidad Surcolombiana}\\
+\textit{Neiva, Colombia}\\
+{\small\ttfamily u20221203988@usco.edu.co}\\
+{\small\ttfamily u20221203367@usco.edu.co}\\
+{\small\ttfamily u20202193898@usco.edu.co}}}
+
+\maketitle
+
+\begin{abstract}
+El diagnóstico de la patología del disco intervertebral lumbar en resonancia magnética (RM) es manual y varía entre observadores. Este trabajo presenta DeepSpine, un flujo completo para clasificar discos lumbares en cortes sagitales T2 en tres clases: Normal, Degeneración discal y Protrusión. A partir de un conjunto público de 515 pacientes se construyó un dataset de 5\,123 recortes por disco (ROI) de 399 pacientes, mediante depuración de series, detección de discos con YOLOv8n, preetiquetado con revisión humana de todos los ROI y división por paciente 70/15/15; el aumento de datos, aplicado dentro de cada partición, llevó el conjunto a 35\,007 imágenes. Se compararon cuatro modelos con la misma división y las mismas métricas: YOLOv8s-cls y ResNet-50 con ajuste fino, y SVM y Random Forest sobre características de la ResNet-50 ajustada. En los 768 ROI originales de prueba, la ResNet-50 obtuvo la mayor exactitud (88,9\,\%; IC 95\,\%: 86,5--91,0) y el mayor F1 macro (0,769), aunque las diferencias entre los cuatro modelos caen dentro del margen de error. Todos reconocen bien la Protrusión (\emph{recall} $\geq 0{,}94$) y fallan en la Degeneración (\emph{recall} de 0,40 a 0,50). Los clasificadores clásicos igualan a las redes solo cuando trabajan sobre características ajustadas a la tarea. El límite parece estar en los datos (etiquetas sin radiólogo, pocos casos de Degeneración y un fuerte sesgo por nivel vertebral) más que en la arquitectura.
+\end{abstract}
+
+\begin{IEEEkeywords}
+resonancia magnética, disco intervertebral lumbar, clasificación de imágenes, aprendizaje profundo, división por paciente, ResNet-50, YOLOv8.
+\end{IEEEkeywords}
+
+\section{Introducción}
+\input{secciones/introduccion}
+
+\section{Trabajos relacionados}
+\label{sec:relacionados}
+\input{secciones/trabajos_relacionados}
+
+\section{Metodología}
+\label{sec:metodologia}
+\input{secciones/metodologia_dataset}
+\input{secciones/metodologia_modelos}
+
+\section{Resultados y discusión}
+\label{sec:resultados}
+\input{secciones/resultados}
+
+\section{Conclusiones}
+\label{sec:conclusiones}
+\input{secciones/conclusiones}
+
+\subsection{Limitaciones y trabajo futuro}
+\input{secciones/limitaciones_dataset}
+
+\section*{Reconocimientos}
+Los autores agradecen a S. Sudirman y a sus coautores por publicar en acceso abierto el conjunto de datos que hizo posible este trabajo \cite{sudirman2019}.
+
+\bibliographystyle{IEEEtran}
+\bibliography{referencias}
+
+\end{document}

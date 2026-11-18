@@ -1,0 +1,16 @@
+% Limitations and future work. Goes inside "V. Conclusions".
+The main limitations are the following:
+\begin{itemize}
+  \item Labels come from students, without a radiologist, reviewed while seeing a model's suggestion, and inter-annotator agreement was not measured (Section~\ref{sec:annotation}).
+  \item Only the sagittal plane is available; Herniation and Bulge cannot be separated and were merged after seeing the data.
+  \item A single 1.5~T MRI scanner, with no scanner diversity and no external validation, which the literature recommends for these models \cite{nigru2024,wang2025}.
+  \item The effective size is 399 patients; copies add no new anatomy. Degeneration has few patients (81, 17 and 22 in the three partitions) and only 42 originals in the test set, which leaves a wide margin of error on its recall.
+  \item Level bias and uniform prior (Sections~\ref{sec:balance} and \ref{sec:res_level}).
+  \item The public dataset does not include a patient identifier: the \texttt{PatientID} field is empty in all the original \texttt{.IMA} files, which depends entirely on the source and not on this work. The folder number was therefore used as the patient identifier, following the source's organization (one folder per patient, 515 in total), and the patient-level split was done by folder. Among the 414 folders used, no \texttt{StudyInstanceUID} or \texttt{StudyTime} is repeated, so there is no sign of duplicates; only if the source itself had spread one person across two folders could there be an overlap between partitions, and this cannot be verified without the original identifier.
+  \item A slice selection error lost 36 patients and left another 8 with a parasagittal slice (Section~\ref{sec:cleaning}).
+  \item The detector metrics come from a training re-run and not from the model that generated the ROIs.
+  \item The SVM and the Random Forest depend on the fine-tuned ResNet-50, so they are not independent models, and each official model corresponds to a single seed.
+  \item The system is an academic tool, not a diagnostic one.
+\end{itemize}
+
+As future work, the Degeneration labels could be checked against the radiologist-validated Pfirrmann grades available for this same corpus at L3-L4, L4-L5 and L5-S1 \cite{masood2026}, and the models could be evaluated on multicenter, expert-annotated datasets \cite{richards2026}. Fixing the slice filtering, by selecting only the T2 TSE series, would also recover the 36 lost patients. Since Degeneration and Protrusion co-occur in the same disc, a multi-label formulation, instead of the priority rule, could reduce the confusion between them. Finally, adding axial slices would make it possible to separate Herniation and Bulge again, and hand-crafted features (disc intensity and height) would complete the answer to Q2.

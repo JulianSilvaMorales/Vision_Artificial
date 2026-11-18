@@ -1,0 +1,118 @@
+% IV. Results and Discussion
+% Figures: docs/resultados/comparacion/*.csv and confusion_test_orig.csv matrices
+Unless otherwise stated, figures refer to the 768 original ROIs of the test partition (60 patients), evaluated once.
+
+% ---------------------------------------------------------------------
+\subsection{Class Distribution and Visual Differences (Q1)}
+\label{sec:res_q1}
+After human review, Protrusion accounts for 73.0\% of the 5,123 original ROIs, Normal for 21.6\% and Degeneration for 5.5\% (Section~\ref{sec:balance}). The distribution depends strongly on the level: Protrusion goes from 39.0\% at L1-L2 to 98.0\% at L4-L5 (Table~\ref{tab:level}). Degeneration, by contrast, appears mostly at L1-L2 and L2-L3, partly because at the lower levels a degenerated disc that also protrudes receives the Protrusion label.
+
+The visual differences that guided labeling are those of the Pfirrmann scale and the consensus nomenclature \cite{pfirrmann2001,fardon2014}. A Normal disc has a bright nucleus on T2, clearly distinguishable from the annulus, and preserved height. In Degeneration the disc darkens due to loss of hydration and loses height, without disc material extending beyond the vertebral margin. In Protrusion the disc material extends beyond that margin, almost always towards the canal (Fig.~\ref{fig:rois}). Brightness thus distinguishes Normal from Degeneration, and the shape of the posterior contour identifies Protrusion. The distinction between bulge and herniation depends on the extent around the disc circumference, which is not visible on a sagittal slice, so these two classes were merged. Both pathologies also frequently co-occur: a degenerated disc may protrude, in which case it is labeled Protrusion under the priority rule, which anticipates the confusion between the two classes.
+
+% ---------------------------------------------------------------------
+\subsection{Comparison of the Four Models}
+\label{sec:res_comparison}
+Table~\ref{tab:results} summarizes the metrics. ResNet-50 achieved the highest accuracy (88.9\%, 683 of 768; 95\% CI: 86.5--91.0) and the highest macro F1 (0.769), followed by the SVM and the Random Forest (88.4\%) and YOLOv8s-cls (87.8\%). The confidence intervals of the four models overlap: the accuracy differences (one point at most) are not conclusive. The Random Forest obtained the highest ROC-AUC (0.942) and the lowest log loss (0.327), that is, the best-ranked and best-calibrated probabilities, although its macro F1 is the lowest of the four. The ensemble of the four models does not improve on ResNet-50 in accuracy or F1.
+
+\begin{table*}[t]
+\centering\footnotesize
+\setlength{\tabcolsep}{4.5pt}
+\caption{Results on the test partition. The ``originals'' columns use the 768 original ROIs; metrics are macro averages. ``Train'' is accuracy on the original training ROIs and ``Full test'' is the balanced set with copies (5,253 images). Best of the four models in bold}
+\label{tab:results}
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+ & \multicolumn{6}{c}{Test, originals (768)} & & \multicolumn{2}{c}{Full test} \\
+\cmidrule(lr){2-7}\cmidrule(lr){9-10}
+Model & Accuracy & Precision & Recall & F1 & ROC-AUC & Log loss & Train & Accuracy & F1 \\
+\midrule
+1. YOLOv8s-cls        & 0.878 & 0.771 & 0.732 & 0.750 & 0.931 & 0.488 & 0.984 & 0.759 & 0.752 \\
+2. ResNet-50          & \textbf{0.889} & 0.795 & \textbf{0.751} & \textbf{0.769} & 0.919 & 0.329 & 0.971 & \textbf{0.775} & \textbf{0.768} \\
+3. SVM (RBF)          & 0.884 & 0.797 & 0.718 & 0.748 & 0.899 & -- & 0.979 & 0.754 & 0.746 \\
+4. Random Forest      & 0.884 & \textbf{0.810} & 0.710 & 0.746 & \textbf{0.942} & \textbf{0.327} & 0.998 & 0.743 & 0.731 \\
+\midrule
+\multicolumn{10}{l}{\emph{Additional comparisons}} \\
+Ensemble of the 4 (average)          & 0.889 & 0.782 & 0.721 & 0.745 & 0.947 & 0.321 & 0.989 & 0.762 & 0.752 \\
+Logistic regression (baseline)       & 0.878 & 0.819 & 0.696 & 0.740 & 0.896 & 0.732 & 0.988 & 0.730 & 0.717 \\
+KNN (baseline)                       & 0.888 & 0.794 & 0.722 & 0.751 & 0.858 & 1.000 & 0.980 & 0.758 & 0.749 \\
+SVM, ImageNet features               & 0.776 & 0.563 & 0.600 & 0.576 & 0.829 & -- & 0.841 & 0.633 & 0.619 \\
+Random Forest, ImageNet features     & 0.753 & 0.518 & 0.546 & 0.524 & 0.831 & 0.726 & 0.999 & 0.598 & 0.577 \\
+\bottomrule
+\multicolumn{10}{l}{\scriptsize The SVM does not output probabilities, so it has no log loss.}
+\end{tabular}
+\end{table*}
+
+On the full, balanced test set, accuracy drops to 74--78\%. That set weights the three classes equally, so Degeneration, the hardest class, counts as much as Protrusion. The gap between the two figures shows how much of the accuracy on originals comes from the majority class.
+
+% ---------------------------------------------------------------------
+\subsection{Per-Class Results and False Negatives (Q3)}
+\label{sec:res_q3}
+Table~\ref{tab:perclass} and Fig.~\ref{fig:confusion} show per-class behavior. The four models recognize Protrusion with a recall of 0.94 to 0.95 and the Normal class with 0.76 to 0.81. Degeneration is the weak class: ResNet-50 and YOLOv8s-cls detect half of the 42 cases (95\% CI: 0.36--0.64), and the SVM and the Random Forest between 40 and 43\%. Their errors go mainly towards Protrusion (12 to 17 cases depending on the model), consistent with the co-occurrence of both pathologies described in Section~\ref{sec:res_q1}. The second most frequent confusion is Normal predicted as Protrusion (26 to 36 cases).
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{confusion_matrices_en.png}
+\caption{Confusion matrices of the four models on the 768 original test ROIs. Each cell shows the number of cases and the percentage of its row (true class).}
+\label{fig:confusion}
+\end{figure*}
+
+If Degeneration and Protrusion are grouped as ``pathological'', the four models classify between 5.0 and 5.5\% of the 604 pathological discs as Normal; that is, their sensitivity for detecting pathology is 94.5 to 95.0\%. In clinical false negatives, the SVM and the Random Forest are slightly better (30 cases versus 32 and 33), but at the cost of lower recall on Degeneration. No model dominates on every metric.
+
+\begin{table}[!htb]
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\caption{Per-class recall and F1 on the original test ROIs, and fraction of pathological discs (604) classified as Normal (FN)}
+\label{tab:perclass}
+\begin{tabular}{lrrrrrrr}
+\toprule
+ & \multicolumn{3}{c}{Recall} & \multicolumn{3}{c}{F1} & \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Model & Degen. & Normal & Protr. & Degen. & Normal & Protr. & FN \\
+\midrule
+YOLOv8s-cls   & 0.500 & 0.756 & 0.941 & 0.545 & 0.775 & 0.929 & 5.3\% \\
+ResNet-50     & 0.500 & 0.811 & 0.941 & 0.568 & 0.806 & 0.935 & 5.5\% \\
+SVM           & 0.429 & 0.774 & 0.950 & 0.522 & 0.791 & 0.932 & 5.0\% \\
+Random Forest & 0.405 & 0.774 & 0.952 & 0.515 & 0.791 & 0.931 & 5.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Regarding Q3, ResNet-50 is the architecture with the best accuracy and macro F1, but none reaches the 90\% target: ResNet-50 falls 1.1 points short, within its confidence interval but below the target. On validation, all variants tried (two architectures, three seeds, regularization and ensembles of up to eight networks) plateaued between 86 and 87.5\% on the originals. That such different methods hit the same ceiling suggests that the limit lies in the data rather than in the model.
+
+% ---------------------------------------------------------------------
+\subsection{Classical Classifiers versus Deep Networks (Q2)}
+\label{sec:res_q2}
+On features from the fine-tuned ResNet-50, the SVM and the Random Forest match the networks (88.4\% accuracy and macro F1 of 0.748 and 0.746), and so do the logistic regression and the KNN (Table~\ref{tab:results}). With non-fine-tuned ImageNet features, however, they drop to 77.6 and 75.3\% accuracy and to a macro F1 of 0.576 and 0.524, and Degeneration almost disappears (recall of 0.21 and 0.10). The answer to Q2 is therefore nuanced: a classical classifier can be as reliable as a deep network, but only if it operates on features already learned by a network fine-tuned to the task. In that case, what separates the classes lies in the representation, not in the final classifier. Hand-crafted features (mean disc intensity, height or contour) were not tested and are left for future work.
+
+% ---------------------------------------------------------------------
+\subsection{Overfitting}
+\label{sec:res_overfitting}
+The four models get between 97.1 and 99.8\% of the original training ROIs right, versus 87.8--88.9\% on the test set (Table~\ref{tab:results}). The networks reach their best validation epoch very early (ResNet-50 at epoch 2), after which training error keeps decreasing without improving validation. The Random Forest is the extreme case (99.8\% on training). The regularization measures (frozen layers, dropout, weight decay, label smoothing, online augmentation and early stopping) contained overfitting without eliminating it. This is expected with 279 training patients and 194 Degeneration originals each repeated about 42 times.
+
+% ---------------------------------------------------------------------
+\subsection{Vertebral-Level Bias}
+\label{sec:res_level}
+Table~\ref{tab:levelres} compares ResNet-50 accuracy at each level with that of a trivial classifier that always predicts the most frequent class of that level in the test set. The trivial classifier gets 74.7\% of the total right, very close to the 73\% of always predicting Protrusion. At L4-L5 and L5-S1, where almost everything is Protrusion, ResNet-50 barely beats the trivial classifier (97.4 versus 94.8\% and 94.2 versus 94.2\%). Its real advantage lies at L1-L2 and L2-L3, where the classes are more evenly spread (30 points at L1-L2 and 29 at L2-L3). Thus, part of the overall accuracy may come from the level rather than from the image, as in shortcut learning \cite{onglt2024}; the lower levels, where the shortcut is easiest, weigh as much in the overall accuracy as the upper ones.
+
+\begin{table}[!htb]
+\centering\footnotesize
+\caption{Per-level accuracy of ResNet-50 versus a classifier that predicts the most frequent class of each level (original test ROIs)}
+\label{tab:levelres}
+\begin{tabular}{lrrr}
+\toprule
+Level & ROIs & Most frequent class & ResNet-50 \\
+\midrule
+L1-L2 & 153 & 48.4\% & 78.4\% \\
+L2-L3 & 153 & 56.2\% & 85.6\% \\
+L3-L4 & 154 & 79.9\% & 89.0\% \\
+L4-L5 & 154 & 94.8\% & 97.4\% \\
+L5-S1 & 154 & 94.2\% & 94.2\% \\
+\midrule
+Total & 768 & 74.7\% & 88.9\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ---------------------------------------------------------------------
+\subsection{Comparison with the State of the Art}
+\label{sec:res_sota}
+The figures in this work are lower than those in the literature (97--99\%) \cite{sari2025,liawrungrueang2023}, but they are not directly comparable. Sar{\i} and Atasoy used the same corpus, but on a binary task, with T1 slices and cross-validation without a declared patient-level split \cite{sari2025}; here the task has three highly imbalanced classes, the split is patient-level and evaluation is done on originals the model never saw. Natalia \emph{et al.}, on the same corpus and predicting the Pfirrmann grade, reported a mean accuracy of 88.1\% \cite{natalia2024}, of the same order as the one obtained here. In addition, high internal figures tend to drop under external validation \cite{yi2023,nigru2024}, which this work could not perform. Finally, the labels come from students without a radiologist, so accuracy measures agreement with those labels and not with a clinical diagnosis \cite{shi2024}.

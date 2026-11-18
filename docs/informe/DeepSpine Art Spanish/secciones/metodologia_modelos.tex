@@ -1,0 +1,49 @@
+% III. Metodología (continuación): formulación, modelos y protocolo de evaluación
+% Subsecciones H a J. Basado en la sección de selección de modelos del Hito 2
+% y en docs/resultados/ (metadata.json de cada modelo).
+
+% ---------------------------------------------------------------------
+\subsection{Formulación del problema y métricas}
+\label{sec:formulacion}
+La tarea es de clasificación multiclase supervisada: dado un ROI $x$ de un disco, el modelo predice una clase $\hat{y}\in\{\text{Degeneración},\ \text{Normal},\ \text{Protrusión}\}$. Las clases son nominales: la prioridad usada al etiquetar (Sección~\ref{sec:anotacion}) no es un orden de gravedad, por lo que no se planteó como regresión ni como clasificación ordinal.
+
+Las métricas son la exactitud, la precisión, el \emph{recall} y el F1 por clase y su promedio macro, la exactitud balanceada (igual al \emph{recall} macro), el área bajo la curva ROC macro (uno contra el resto) y la pérdida logarítmica. La exactitud sola es engañosa con este desbalance: un clasificador que siempre dijera Protrusión acertaría el 73\,\% de los originales de prueba. Por eso el criterio principal de comparación es el F1 macro, acompañado del \emph{recall} por clase \cite{mosquera2024}. Para responder a la pregunta P3 se reporta además la tasa de falsos negativos clínicos: la fracción de discos patológicos (Degeneración o Protrusión) que el modelo clasifica como Normal.
+
+% ---------------------------------------------------------------------
+\subsection{Modelos y ajuste}
+\label{sec:modelos}
+Se eligieron cuatro modelos que cumplen cuatro criterios: (i) sirven para clasificar un ROI en tres clases; (ii) tienen antecedentes en RM lumbar o en tareas médicas comparables; (iii) representan familias distintas, para que la comparación diga algo; y (iv) pueden entrenarse con la misma división por paciente y evaluarse con las mismas métricas. Todos parten de pesos preentrenados en ImageNet. Los ROI de 128$\times$128~px en escala de grises se convierten a tres canales, se redimensionan a 224$\times$224~px y se escalan a $[0,1]$; en la ResNet-50 se normalizan además con la media y la desviación estándar de ImageNet. La Tabla~\ref{tab:hiper} resume la configuración de cada modelo.
+
+\begin{table*}[t]
+\centering\footnotesize
+\caption{Configuración de los cuatro modelos. Los valores elegidos entre varios se fijaron con el F1 macro (o la exactitud, en YOLO) de la validación}
+\label{tab:hiper}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.15\textwidth}>{\raggedright\arraybackslash}p{0.2\textwidth}>{\raggedright\arraybackslash}p{0.19\textwidth}>{\raggedright\arraybackslash}p{0.36\textwidth}}
+\toprule
+Modelo & Entrada & Optimización y pérdida & Hiperparámetros \\
+\midrule
+1. YOLOv8s-cls & Imagen 224$\times$224 & AdamW; entropía cruzada & Tasa inicial $5\times10^{-4}$, final $\times 0{,}1$, coseno con 1 época de calentamiento; decaimiento de pesos 0,01; 4 capas congeladas; \emph{dropout} 0,3; lote 64; hasta 15 épocas, paciencia 4 \\
+2. ResNet-50 & Imagen 224$\times$224, normalización ImageNet & AdamW; entropía cruzada con suavizado 0,1 & Tasa $10^{-4}$ con decaimiento coseno; decaimiento de pesos 0,01; \emph{dropout} 0,3; lote 64; hasta 10 épocas, paciencia 4; mejor época: 2 \\
+3. SVM & 2\,048 características de la ResNet-50 ajustada $\to$ PCA 256 & Pérdida bisagra (SVC) & Núcleo RBF, $\gamma$ = \texttt{scale}, uno contra el resto; $C\in\{0{,}1;\ 0{,}5;\ 2;\ 8\}$, elegido $C=0{,}1$ \\
+4. Random Forest & Las mismas que el SVM & Índice de Gini & 300 árboles; profundidad máxima $\in\{10;\ 20;\ \text{sin límite}\}$, elegida 20 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsubsection{YOLOv8s-cls}
+Es la variante de clasificación de la familia YOLO, la más usada en la literatura revisada \cite{liawrungrueang2023,prisilla2023,wang2025}, y es coherente con el resto del flujo, que ya usa YOLO para detectar los discos. Se ajustó con AdamW, entropía cruzada, las cuatro primeras capas congeladas y \emph{dropout} de 0,3. Como el aumento principal ya está en los archivos, el aumento en línea se limitó a variar la proporción del recorte (de 3:4 a 4:3) y el brillo ($\pm 5\,\%$), sin reflexiones.
+
+\subsubsection{ResNet-50}
+Es una red convolucional de otra familia (residual), con respaldo en la clasificación de discos lumbares \cite{tan2024,alkubaisi2022}. Se congelaron la primera convolución y el primer bloque residual, y la capa final se sustituyó por \emph{dropout} de 0,3 y una capa lineal de tres salidas. Se entrenó con AdamW, tasa de aprendizaje con decaimiento coseno, entropía cruzada con suavizado de etiquetas de 0,1 y un aumento en línea suave (rotación de $\pm 6^{\circ}$, desplazamiento del 4\,\%, zoom de 0,95 a 1,05, y brillo y contraste de $\pm 10\,\%$). La mejor época se eligió por F1 macro en validación, con parada temprana.
+
+\subsubsection{SVM y Random Forest sobre características profundas}
+Un clasificador clásico sobre los píxeles crudos trata cada valor por separado y no reconoce la forma. Por eso se usó la ResNet-50 como extractor: sin su capa final, entrega 2\,048 valores por imagen, que se estandarizan, se reducen a 256 componentes con análisis de componentes principales (PCA; 80,0\,\% de la varianza) y se clasifican con un SVM de núcleo RBF o con un Random Forest de 300 árboles. La técnica tiene antecedentes sobre este mismo corpus \cite{sari2025} y en otras tareas médicas \cite{khoiwal2024}; el Random Forest solo cuenta con antecedentes en datos tabulares \cite{zhang2023} y se presenta como una extensión propia. El escalador, el PCA y los clasificadores se ajustan solo con el entrenamiento.
+
+El diseño inicial usaba la ResNet-50 con los pesos de ImageNet congelados, para que el SVM y el Random Forest no dependieran de la red ajustada. En validación rindieron poco (F1 macro de 0,64 y 0,60), así que se adoptó como extractor la ResNet-50 ya ajustada (F1 de 0,80 y 0,79). El costo es que los modelos 3 y 4 dependen del modelo 2. La versión con ImageNet se conserva como ablación (Sección~\ref{sec:res_p2}). Como líneas base del curso se entrenaron también una regresión logística y un KNN sobre las mismas características, que no cuentan entre los cuatro modelos.
+
+% ---------------------------------------------------------------------
+\subsection{Protocolo de evaluación}
+\label{sec:protocolo}
+Los cuatro modelos usan la misma división por paciente (Tabla~\ref{tab:split}) y la misma semilla (42). Las épocas, los hiperparámetros y las variantes se eligieron con la validación; la prueba se evaluó una sola vez, con la configuración final. Las variantes probadas en validación (otras semillas, tasas de aprendizaje, suavizado y ensambles) quedan registradas en el repositorio.
+
+La guía del curso recomienda aumentar solo el entrenamiento. Aquí también se aumentaron la validación y la prueba, para tener la misma cantidad por clase (Sección~\ref{sec:aumento}). Las copias de validación y prueba nunca entran al entrenamiento, por lo que no hay fuga; aun así, para que las copias casi idénticas no inflen las métricas, \textbf{los resultados principales se calculan sobre los 768 ROI originales de la prueba}, con la proporción natural de clases (42 de Degeneración, 164 Normales y 562 de Protrusión). El conjunto de prueba completo, balanceado y con copias (5\,253 imágenes), se reporta aparte. Con 768 imágenes, el intervalo de confianza del 95\,\% de la exactitud es de unos $\pm 2{,}2$ puntos (intervalo de Wilson).

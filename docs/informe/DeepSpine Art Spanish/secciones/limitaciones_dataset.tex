@@ -1,0 +1,16 @@
+% Limitaciones y trabajo futuro. Va dentro de "V. Conclusiones".
+Las principales limitaciones son las siguientes:
+\begin{itemize}
+  \item Las etiquetas son de estudiantes, sin radiólogo, revisadas viendo la sugerencia de un modelo, y no se midió el acuerdo entre anotadores (Sección~\ref{sec:anotacion}).
+  \item Solo hay plano sagital; Hernia y Abombamiento no son separables y se fusionaron después de ver los datos.
+  \item Un único equipo de resonancia de 1,5~T, sin diversidad de escáner ni validación externa, que la literatura recomienda para estos modelos \cite{nigru2024,wang2025}.
+  \item El tamaño efectivo son 399 pacientes; las copias no aportan anatomía nueva. Degeneración cuenta con pocos pacientes (81, 17 y 22 en las tres particiones) y solo 42 originales en la prueba, lo que deja un margen de error amplio en su \emph{recall}.
+  \item Sesgo por nivel y prior uniforme (Secciones~\ref{sec:balance} y \ref{sec:res_nivel}).
+  \item El conjunto público no incluye un identificador de paciente: el campo \texttt{PatientID} está vacío en todos los archivos \texttt{.IMA} originales, algo que depende por completo de la fuente y no de este trabajo. Por eso se usó el número de carpeta como identificador de paciente, siguiendo la organización de la fuente (una carpeta por paciente, 515 en total), y la división por paciente se hizo por carpeta. Entre las 414 carpetas usadas no se repite ningún \texttt{StudyInstanceUID} ni ningún \texttt{StudyTime}, así que no hay indicios de duplicados; solo si la propia fuente hubiera repartido a una misma persona en dos carpetas podría existir un solapamiento entre particiones, y eso no puede verificarse sin el identificador original.
+  \item Un error en la selección de cortes hizo perder 36 pacientes y dejó a otros 8 con un corte parasagital (Sección~\ref{sec:depuracion}).
+  \item Las métricas del detector provienen de una repetición del entrenamiento y no del modelo que generó los ROI.
+  \item El SVM y el Random Forest dependen de la ResNet-50 ajustada, por lo que no son modelos independientes, y cada modelo oficial corresponde a una sola semilla.
+  \item El sistema es una herramienta académica, no diagnóstica.
+\end{itemize}
+
+Como trabajo futuro, las etiquetas de Degeneración podrían contrastarse con los grados de Pfirrmann validados por radiólogo que existen para este mismo corpus en L3-L4, L4-L5 y L5-S1 \cite{masood2026}, y los modelos podrían evaluarse en conjuntos multicéntricos anotados por expertos \cite{richards2026}. Corregir el filtrado de cortes, seleccionando solo la serie T2 TSE, recuperaría además los 36 pacientes perdidos. Como Degeneración y Protrusión coexisten en un mismo disco, una formulación multietiqueta, en lugar de la regla de prioridad, podría reducir la confusión entre ambas. Por último, incorporar los cortes axiales permitiría separar de nuevo Hernia y Abombamiento, y unas características diseñadas a mano (intensidad y altura del disco) completarían la respuesta a la pregunta P2.

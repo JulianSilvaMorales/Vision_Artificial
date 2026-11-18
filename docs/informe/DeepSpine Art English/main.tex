@@ -1,0 +1,72 @@
+% =====================================================================
+% DeepSpine: article in IEEE conference format (English version)
+% Course template: US letter, two columns, Times, "TABLE I" above tables
+% and "Fig. 1" below figures, at most three heading levels (III. / A. / 1)).
+% Build: pdflatex -> bibtex -> pdflatex -> pdflatex
+% (on Overleaf, upload the folder and compile main.tex).
+% =====================================================================
+\documentclass[conference,letterpaper]{IEEEtran}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+% Las tablas y figuras nunca aparecen antes del punto del texto donde se escriben
+\usepackage{flafter}
+\usepackage{graphicx,booktabs,array,xcolor}
+\usepackage{url}
+\def\UrlBreaks{\do\_\do\-\do/\do.}
+\usepackage{tikz,pgfplots}
+\usetikzlibrary{positioning,arrows.meta}
+\pgfplotsset{compat=1.16}
+\graphicspath{{figures/}}
+
+\begin{document}
+
+\title{DeepSpine: Classification of Lumbar Intervertebral Discs in Sagittal T2-Weighted MRI}
+
+\author{\IEEEauthorblockN{Jhon Jairo Perdomo Perdomo, Julián Andrés Silva Morales, Juan Manuel Tengonó Lasso}
+\IEEEauthorblockA{\textit{Software Engineering Program, Faculty of Engineering, Universidad Surcolombiana}\\
+\textit{Neiva, Colombia}\\
+{\small\ttfamily u20221203988@usco.edu.co}\\
+{\small\ttfamily u20221203367@usco.edu.co}\\
+{\small\ttfamily u20202193898@usco.edu.co}}}
+
+\maketitle
+
+\begin{abstract}
+Diagnosing lumbar intervertebral disc pathology on magnetic resonance imaging (MRI) is a manual task that varies between observers. This work presents DeepSpine, an end-to-end pipeline that classifies lumbar discs on sagittal T2-weighted slices into three classes: Normal, Disc Degeneration and Protrusion. Starting from a public dataset of 515 patients, a dataset of 5,123 per-disc regions of interest (ROIs) from 399 patients was built through series cleaning, disc detection with YOLOv8n, model-assisted pre-labeling with human review of every ROI, and a 70/15/15 patient-level split; data augmentation, applied within each partition, brought the set to 35,007 images. Four models were compared under the same split and the same metrics: fine-tuned YOLOv8s-cls and ResNet-50, and an SVM and a Random Forest trained on features from the fine-tuned ResNet-50. On the 768 original test ROIs, ResNet-50 achieved the highest accuracy (88.9\%; 95\% CI: 86.5--91.0) and the highest macro F1 (0.769), although the differences among the four models fall within the margin of error. All models recognize Protrusion well (recall $\geq 0.94$) and struggle with Degeneration (recall of 0.40 to 0.50). Classical classifiers match the networks only when they operate on task-adapted features. The limit appears to lie in the data (labels without a radiologist, few Degeneration cases and a strong vertebral-level bias) rather than in the architecture.
+\end{abstract}
+
+\begin{IEEEkeywords}
+magnetic resonance imaging, lumbar intervertebral disc, image classification, deep learning, patient-level split, ResNet-50, YOLOv8.
+\end{IEEEkeywords}
+
+\section{Introduction}
+\input{sections/introduction}
+
+\section{Related Work}
+\label{sec:related}
+\input{sections/related_work}
+
+\section{Methodology}
+\label{sec:methodology}
+\input{sections/methodology_dataset}
+\input{sections/methodology_models}
+
+\section{Results and Discussion}
+\label{sec:results}
+\input{sections/results}
+
+\section{Conclusions}
+\label{sec:conclusions}
+\input{sections/conclusions}
+
+\subsection{Limitations and Future Work}
+\input{sections/limitations}
+
+\section*{Acknowledgment}
+The authors thank S. Sudirman and co-authors for releasing, in open access, the dataset that made this work possible \cite{sudirman2019}.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

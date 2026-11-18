@@ -1,0 +1,10 @@
+% V. Conclusions
+Starting from a public corpus of 515 patients, this work built a traceable dataset of 5,123 lumbar disc ROIs from 399 patients in three classes and compared four models on it under the same patient-level split and the same metrics. The answers to the research questions are as follows.
+
+\textbf{Q1.} The dataset is highly imbalanced: Protrusion accounts for 73.0\% of the ROIs, Normal for 21.6\% and Degeneration for 5.5\%, and pathology concentrates at L4-L5 and L5-S1. The disc's T2 signal separates Normal from Degeneration, and the shape of the posterior contour identifies Protrusion; Herniation and Bulge cannot be separated on the sagittal plane, which forced their merge.
+
+\textbf{Q2.} The SVM and the Random Forest match the networks (88.4\% accuracy) only when they use features from a ResNet-50 fine-tuned to the task; with generic ImageNet features they drop to 75--78\% and barely detect Degeneration. They are faster to fit, but they do not replace the network: they depend on it.
+
+\textbf{Q3.} ResNet-50 obtained the highest accuracy (88.9\%) and the highest macro F1 (0.769), with no conclusive differences from the other three models and without reaching the 90\% target. All four classify only 5.0 to 5.5\% of pathological discs as Normal, but detect just 40 to 50\% of Degeneration cases. Part of the accuracy is explained by the vertebral level.
+
+Overall, the limiting factor was not the architecture but the data: few original Degeneration images, student labels without a radiologist and a strong level bias. This is why per-class and per-level metrics matter as much as overall accuracy.
