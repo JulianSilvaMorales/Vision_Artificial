@@ -1,0 +1,118 @@
+% IV. Resultados y discusión
+% Cifras: docs/resultados/comparacion/*.csv y matrices confusion_test_orig.csv
+Salvo que se indique lo contrario, las cifras corresponden a los 768 ROI originales de la partición de prueba (60 pacientes), evaluada una sola vez.
+
+% ---------------------------------------------------------------------
+\subsection{Distribución de clases y diferencias visuales (P1)}
+\label{sec:res_p1}
+Tras la revisión humana, la Protrusión es el 73,0\,\% de los 5\,123 ROI originales, Normal el 21,6\,\% y Degeneración el 5,5\,\% (Sección~\ref{sec:balance}). La distribución depende mucho del nivel: la Protrusión pasa del 39,0\,\% en L1-L2 al 98,0\,\% en L4-L5 (Tabla~\ref{tab:nivel}). La Degeneración, en cambio, aparece sobre todo en L1-L2 y L2-L3, en parte porque en los niveles inferiores un disco degenerado que además protruye recibe la etiqueta Protrusión.
+
+Las diferencias visuales que guiaron el etiquetado son las de la escala de Pfirrmann y la nomenclatura de consenso \cite{pfirrmann2001,fardon2014}. Un disco Normal tiene el núcleo brillante en T2, bien distinguible del anillo, y altura conservada. En la Degeneración el disco se oscurece por pérdida de hidratación y pierde altura, sin que el material discal sobrepase el contorno vertebral. En la Protrusión el material discal se extiende más allá de ese contorno, casi siempre hacia el canal (Fig.~\ref{fig:rois}). El brillo distingue, por tanto, Normal de Degeneración, y la forma del contorno posterior distingue la Protrusión. La separación entre abombamiento y hernia depende de la extensión sobre la circunferencia del disco, que no se ve en un corte sagital, y por eso esas dos clases se fusionaron. Las dos patologías, además, coexisten con frecuencia: un disco degenerado puede protruir, y en ese caso recibe la etiqueta Protrusión por la regla de prioridad, lo que anticipa la confusión entre ambas clases.
+
+% ---------------------------------------------------------------------
+\subsection{Comparación de los cuatro modelos}
+\label{sec:res_comparacion}
+La Tabla~\ref{tab:resultados} resume las métricas. La ResNet-50 obtuvo la mayor exactitud (88,9\,\%, 683 de 768; IC 95\,\%: 86,5--91,0) y el mayor F1 macro (0,769), seguida por el SVM y el Random Forest (88,4\,\%) y el YOLOv8s-cls (87,8\,\%). Los intervalos de confianza de los cuatro se solapan: las diferencias de exactitud (un punto como máximo) no son concluyentes. El Random Forest obtuvo el mayor ROC-AUC (0,942) y la menor pérdida logarítmica (0,327), es decir, las probabilidades mejor ordenadas y calibradas, aunque su F1 macro es el más bajo de los cuatro. El ensamble de los cuatro modelos no mejora a la ResNet-50 en exactitud ni en F1.
+
+\begin{table*}[t]
+\centering\footnotesize
+\setlength{\tabcolsep}{4.5pt}
+\caption{Resultados en la partición de prueba. Las columnas de originales usan los 768 ROI originales; las métricas son promedios macro. ``Entren.'' es la exactitud en los originales de entrenamiento y ``Prueba completa'' el conjunto balanceado con copias (5\,253 imágenes). En negrita, el mejor de los cuatro modelos}
+\label{tab:resultados}
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+ & \multicolumn{6}{c}{Prueba, originales (768)} & & \multicolumn{2}{c}{Prueba completa} \\
+\cmidrule(lr){2-7}\cmidrule(lr){9-10}
+Modelo & Exactitud & Precisión & \emph{Recall} & F1 & ROC-AUC & Pérd. log. & Entren. & Exactitud & F1 \\
+\midrule
+1. YOLOv8s-cls        & 0,878 & 0,771 & 0,732 & 0,750 & 0,931 & 0,488 & 0,984 & 0,759 & 0,752 \\
+2. ResNet-50          & \textbf{0,889} & 0,795 & \textbf{0,751} & \textbf{0,769} & 0,919 & 0,329 & 0,971 & \textbf{0,775} & \textbf{0,768} \\
+3. SVM (RBF)          & 0,884 & 0,797 & 0,718 & 0,748 & 0,899 & -- & 0,979 & 0,754 & 0,746 \\
+4. Random Forest      & 0,884 & \textbf{0,810} & 0,710 & 0,746 & \textbf{0,942} & \textbf{0,327} & 0,998 & 0,743 & 0,731 \\
+\midrule
+\multicolumn{10}{l}{\emph{Comparaciones adicionales}} \\
+Ensamble de los 4 (promedio)            & 0,889 & 0,782 & 0,721 & 0,745 & 0,947 & 0,321 & 0,989 & 0,762 & 0,752 \\
+Regresión logística (línea base)        & 0,878 & 0,819 & 0,696 & 0,740 & 0,896 & 0,732 & 0,988 & 0,730 & 0,717 \\
+KNN (línea base)                        & 0,888 & 0,794 & 0,722 & 0,751 & 0,858 & 1,000 & 0,980 & 0,758 & 0,749 \\
+SVM, características de ImageNet        & 0,776 & 0,563 & 0,600 & 0,576 & 0,829 & -- & 0,841 & 0,633 & 0,619 \\
+Random Forest, características de ImageNet & 0,753 & 0,518 & 0,546 & 0,524 & 0,831 & 0,726 & 0,999 & 0,598 & 0,577 \\
+\bottomrule
+\multicolumn{10}{l}{\scriptsize El SVM no entrega probabilidades, por lo que no tiene pérdida logarítmica.}
+\end{tabular}
+\end{table*}
+
+En el conjunto de prueba completo, balanceado, la exactitud baja a 74--78\,\%. Ese conjunto pesa igual las tres clases, de modo que la Degeneración, la clase más difícil, cuenta tanto como la Protrusión. La diferencia entre las dos cifras muestra cuánto de la exactitud sobre originales proviene de la clase mayoritaria.
+
+% ---------------------------------------------------------------------
+\subsection{Resultados por clase y falsos negativos (P3)}
+\label{sec:res_p3}
+La Tabla~\ref{tab:porclase} y la Fig.~\ref{fig:confusion} muestran el comportamiento por clase. Los cuatro modelos reconocen la Protrusión con un \emph{recall} de 0,94 a 0,95 y la clase Normal con 0,76 a 0,81. La Degeneración es la clase débil: la ResNet-50 y el YOLOv8s-cls detectan la mitad de los 42 casos (IC 95\,\%: 0,36--0,64), y el SVM y el Random Forest, entre el 40 y el 43\,\%. Sus errores van sobre todo hacia Protrusión (de 12 a 17 casos según el modelo), lo que concuerda con la coexistencia de ambas patologías descrita en la Sección~\ref{sec:res_p1}. La segunda confusión frecuente es Normal predicho como Protrusión (de 26 a 36 casos).
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{matrices_confusion_es.png}
+\caption{Matrices de confusión de los cuatro modelos en los 768 ROI originales de prueba. Cada celda muestra el número de casos y el porcentaje de su fila (clase real).}
+\label{fig:confusion}
+\end{figure*}
+
+Si se agrupan Degeneración y Protrusión como ``patológico'', los cuatro modelos clasifican como Normal entre el 5,0 y el 5,5\,\% de los 604 discos patológicos; es decir, su sensibilidad para detectar patología es del 94,5 al 95,0\,\%. En falsos negativos clínicos, el SVM y el Random Forest son ligeramente mejores (30 casos frente a 32 y 33), pero a costa de un menor \emph{recall} en Degeneración. Ningún modelo domina en todas las métricas.
+
+\begin{table}[!htb]
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\caption{Recall y F1 por clase en los originales de prueba, y fracción de discos patológicos (604) clasificados como Normal (FN)}
+\label{tab:porclase}
+\begin{tabular}{lrrrrrrr}
+\toprule
+ & \multicolumn{3}{c}{\emph{Recall}} & \multicolumn{3}{c}{F1} & \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Modelo & Degen. & Normal & Protr. & Degen. & Normal & Protr. & FN \\
+\midrule
+YOLOv8s-cls   & 0,500 & 0,756 & 0,941 & 0,545 & 0,775 & 0,929 & 5,3\,\% \\
+ResNet-50     & 0,500 & 0,811 & 0,941 & 0,568 & 0,806 & 0,935 & 5,5\,\% \\
+SVM           & 0,429 & 0,774 & 0,950 & 0,522 & 0,791 & 0,932 & 5,0\,\% \\
+Random Forest & 0,405 & 0,774 & 0,952 & 0,515 & 0,791 & 0,931 & 5,0\,\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Respecto a la pregunta P3, la ResNet-50 es la arquitectura con mejor exactitud y F1 macro, pero ninguna alcanza la meta del 90\,\%: la ResNet-50 queda a 1,1 puntos, dentro de su intervalo de confianza, pero por debajo. En validación, todas las variantes probadas (dos arquitecturas, tres semillas, regularización y ensambles de hasta ocho redes) se estancaron entre el 86 y el 87,5\,\% sobre los originales. Que métodos tan distintos choquen con el mismo techo indica que el límite está en los datos más que en el modelo.
+
+% ---------------------------------------------------------------------
+\subsection{Clasificadores clásicos frente a redes profundas (P2)}
+\label{sec:res_p2}
+Sobre características de la ResNet-50 ajustada, el SVM y el Random Forest igualan a las redes (88,4\,\% de exactitud y F1 macro de 0,748 y 0,746), y lo mismo ocurre con la regresión logística y el KNN (Tabla~\ref{tab:resultados}). Con características de ImageNet sin ajustar, en cambio, caen al 77,6 y 75,3\,\% de exactitud y a un F1 macro de 0,576 y 0,524, y la Degeneración casi desaparece (\emph{recall} de 0,21 y 0,10). La respuesta a P2 es, por tanto, matizada: un clasificador clásico puede ser tan confiable como una red profunda, pero solo si trabaja sobre características que ya aprendió una red ajustada a la tarea. En ese caso, lo que distingue las clases está en la representación, no en el clasificador final. No se probaron características diseñadas a mano (intensidad media del disco, altura o contorno), que quedan como trabajo futuro.
+
+% ---------------------------------------------------------------------
+\subsection{Sobreajuste}
+\label{sec:res_sobreajuste}
+Los cuatro modelos aciertan entre el 97,1 y el 99,8\,\% de los originales de entrenamiento, frente al 87,8--88,9\,\% de la prueba (Tabla~\ref{tab:resultados}). Las redes alcanzan su mejor época en validación muy pronto (la ResNet-50 en la época 2), y a partir de ahí el error de entrenamiento sigue bajando sin que mejore la validación. El Random Forest es el caso extremo (99,8\,\% en entrenamiento). Las medidas de regularización (capas congeladas, \emph{dropout}, decaimiento de pesos, suavizado de etiquetas, aumento en línea y parada temprana) contuvieron el sobreajuste sin eliminarlo. Es lo esperable con 279 pacientes de entrenamiento y 194 originales de Degeneración repetidos unas 42 veces cada uno.
+
+% ---------------------------------------------------------------------
+\subsection{Sesgo por nivel vertebral}
+\label{sec:res_nivel}
+La Tabla~\ref{tab:nivelres} compara la exactitud de la ResNet-50 en cada nivel con la de un clasificador trivial que siempre respondiera la clase más frecuente de ese nivel en la prueba. El trivial acierta el 74,7\,\% del total, muy cerca del 73\,\% de responder siempre Protrusión. En L4-L5 y L5-S1, donde casi todo es Protrusión, la ResNet-50 apenas supera al trivial (97,4 frente a 94,8\,\% y 94,2 frente a 94,2\,\%). Su ventaja real está en L1-L2 y L2-L3, donde las clases están más repartidas (de 30 puntos en L1-L2 y 29 en L2-L3). Así, una parte de la exactitud global puede venir del nivel y no de la imagen, como ocurre con el aprendizaje por atajos \cite{onglt2024}; los niveles inferiores, donde el atajo es más fácil, pesan lo mismo en la exactitud global que los superiores.
+
+\begin{table}[!htb]
+\centering\footnotesize
+\caption{Exactitud por nivel de la ResNet-50 frente a un clasificador que responde la clase más frecuente de cada nivel (originales de prueba)}
+\label{tab:nivelres}
+\begin{tabular}{lrrr}
+\toprule
+Nivel & ROI & Clase más frecuente & ResNet-50 \\
+\midrule
+L1-L2 & 153 & 48,4\,\% & 78,4\,\% \\
+L2-L3 & 153 & 56,2\,\% & 85,6\,\% \\
+L3-L4 & 154 & 79,9\,\% & 89,0\,\% \\
+L4-L5 & 154 & 94,8\,\% & 97,4\,\% \\
+L5-S1 & 154 & 94,2\,\% & 94,2\,\% \\
+\midrule
+Total & 768 & 74,7\,\% & 88,9\,\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ---------------------------------------------------------------------
+\subsection{Comparación con el estado del arte}
+\label{sec:res_sota}
+Las cifras de este trabajo son inferiores a las de la literatura (97--99\,\%) \cite{sari2025,liawrungrueang2023}, pero no son comparables de forma directa. Sarı y Atasoy usaron el mismo corpus, pero en una tarea binaria, con cortes T1 y validación cruzada sin división declarada por paciente \cite{sari2025}; aquí la tarea tiene tres clases muy desbalanceadas, la división es por paciente y la evaluación se hace sobre originales que el modelo nunca vio. Natalia \emph{et al.}, sobre el mismo corpus y prediciendo el grado de Pfirrmann, reportaron una exactitud media del 88,1\,\% \cite{natalia2024}, del mismo orden que la obtenida aquí. Además, las cifras internas altas suelen bajar en validación externa \cite{yi2023,nigru2024}, que este trabajo no pudo hacer. Por último, las etiquetas son de estudiantes, sin radiólogo, de modo que la exactitud mide el acuerdo con esas etiquetas y no con un diagnóstico clínico \cite{shi2024}.

@@ -1,0 +1,10 @@
+% V. Conclusiones
+Este trabajo construyó, a partir de un corpus público de 515 pacientes, un dataset trazable de 5\,123 ROI de discos lumbares de 399 pacientes en tres clases, y comparó sobre él cuatro modelos con la misma división por paciente y las mismas métricas. Las respuestas a las preguntas de investigación son las siguientes.
+
+\textbf{P1.} El dataset está muy desbalanceado: Protrusión es el 73,0\,\% de los ROI, Normal el 21,6\,\% y Degeneración el 5,5\,\%, y la patología se concentra en L4-L5 y L5-S1. La señal T2 del disco separa Normal de Degeneración y la forma del contorno posterior identifica la Protrusión; Hernia y Abombamiento no pueden separarse en el plano sagital, lo que obligó a fusionarlos.
+
+\textbf{P2.} El SVM y el Random Forest alcanzan a las redes (88,4\,\% de exactitud) solo cuando usan características de una ResNet-50 ajustada a la tarea; con características genéricas de ImageNet caen al 75--78\,\% y casi no detectan la Degeneración. Son más rápidos de ajustar, pero no sustituyen a la red: dependen de ella.
+
+\textbf{P3.} La ResNet-50 obtuvo la mayor exactitud (88,9\,\%) y el mayor F1 macro (0,769), sin diferencias concluyentes con los otros tres modelos y sin alcanzar la meta del 90\,\%. Los cuatro clasifican como Normal solo entre el 5,0 y el 5,5\,\% de los discos patológicos, pero detectan apenas entre el 40 y el 50\,\% de los casos de Degeneración. Una parte de la exactitud se explica por el nivel vertebral.
+
+En conjunto, el factor limitante no fue la arquitectura sino los datos: pocas imágenes originales de Degeneración, etiquetas de estudiantes sin radiólogo y un sesgo fuerte por nivel. Por eso las métricas por clase y por nivel son tan importantes como la exactitud global.
