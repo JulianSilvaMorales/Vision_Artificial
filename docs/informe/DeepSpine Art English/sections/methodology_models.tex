@@ -1,0 +1,49 @@
+% III. Methodology (continued): formulation, models and evaluation protocol
+% Subsections H to J. Based on the model selection section of Milestone 2
+% and on docs/resultados/ (metadata.json of each model).
+
+% ---------------------------------------------------------------------
+\subsection{Problem Formulation and Metrics}
+\label{sec:formulation}
+The task is supervised multiclass classification: given the ROI $x$ of a disc, the model predicts a class $\hat{y}\in\{\text{Degeneration},\ \text{Normal},\ \text{Protrusion}\}$. The classes are nominal: the priority used during labeling (Section~\ref{sec:annotation}) is not a severity order, so the task was not posed as regression or ordinal classification.
+
+The metrics are accuracy, per-class precision, recall and F1 and their macro averages, balanced accuracy (equal to macro recall), macro one-versus-rest area under the ROC curve, and log loss. Accuracy alone is misleading under this imbalance: a classifier that always predicted Protrusion would get 73\% of the original test ROIs right. The main comparison criterion is therefore macro F1, together with per-class recall \cite{mosquera2024}. To answer Q3, the clinical false-negative rate is also reported: the fraction of pathological discs (Degeneration or Protrusion) that the model classifies as Normal.
+
+% ---------------------------------------------------------------------
+\subsection{Models and Training}
+\label{sec:models}
+Four models were chosen that meet four criteria: (i) they can classify an ROI into three classes; (ii) they have precedents in lumbar MRI or in comparable medical tasks; (iii) they represent different families, so that the comparison is meaningful; and (iv) they can be trained with the same patient-level split and evaluated with the same metrics. All of them start from ImageNet-pretrained weights. The 128$\times$128~px grayscale ROIs are converted to three channels, resized to 224$\times$224~px and scaled to $[0,1]$; for ResNet-50 they are also normalized with the ImageNet mean and standard deviation. Table~\ref{tab:hyper} summarizes each model's configuration.
+
+\begin{table*}[t]
+\centering\footnotesize
+\caption{Configuration of the four models. Values chosen among several options were set by validation macro F1 (or accuracy, for YOLO)}
+\label{tab:hyper}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.15\textwidth}>{\raggedright\arraybackslash}p{0.2\textwidth}>{\raggedright\arraybackslash}p{0.19\textwidth}>{\raggedright\arraybackslash}p{0.36\textwidth}}
+\toprule
+Model & Input & Optimization and loss & Hyperparameters \\
+\midrule
+1. YOLOv8s-cls & 224$\times$224 image & AdamW; cross-entropy & Initial rate $5\times10^{-4}$, final $\times 0.1$, cosine with 1 warm-up epoch; weight decay 0.01; 4 frozen layers; dropout 0.3; batch 64; up to 15 epochs, patience 4 \\
+2. ResNet-50 & 224$\times$224 image, ImageNet normalization & AdamW; cross-entropy with 0.1 label smoothing & Rate $10^{-4}$ with cosine decay; weight decay 0.01; dropout 0.3; batch 64; up to 10 epochs, patience 4; best epoch: 2 \\
+3. SVM & 2,048 features from the fine-tuned ResNet-50 $\to$ PCA 256 & Hinge loss (SVC) & RBF kernel, $\gamma$ = \texttt{scale}, one-versus-rest; $C\in\{0.1, 0.5, 2, 8\}$, chosen $C=0.1$ \\
+4. Random Forest & Same as the SVM & Gini impurity & 300 trees; maximum depth $\in\{10, 20, \text{none}\}$, chosen 20 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsubsection{YOLOv8s-cls}
+It is the classification variant of the YOLO family, the most common in the reviewed literature \cite{liawrungrueang2023,prisilla2023,wang2025}, and it is consistent with the rest of the pipeline, which already uses YOLO to detect the discs. It was fine-tuned with AdamW, cross-entropy, the first four layers frozen and a dropout of 0.3. Since the main augmentation is already in the files, online augmentation was limited to varying the crop aspect ratio (from 3:4 to 4:3) and brightness ($\pm 5\%$), without flips.
+
+\subsubsection{ResNet-50}
+It is a convolutional network from a different (residual) family, with precedents in lumbar disc classification \cite{tan2024,alkubaisi2022}. The first convolution and the first residual block were frozen, and the final layer was replaced by a dropout of 0.3 and a linear layer with three outputs. It was trained with AdamW, a cosine-decaying learning rate, cross-entropy with label smoothing of 0.1 and mild online augmentation (rotation of $\pm 6^{\circ}$, 4\% shift, zoom from 0.95 to 1.05, and brightness and contrast of $\pm 10\%$). The best epoch was chosen by validation macro F1, with early stopping.
+
+\subsubsection{SVM and Random Forest on Deep Features}
+A classical classifier on raw pixels treats each value separately and does not recognize shape. ResNet-50 was therefore used as a feature extractor: without its final layer, it yields 2,048 values per image, which are standardized, reduced to 256 components with principal component analysis (PCA; 80.0\% of the variance) and classified with an RBF-kernel SVM or a 300-tree Random Forest. The technique has precedents on this same corpus \cite{sari2025} and in other medical tasks \cite{khoiwal2024}; the Random Forest only has precedents on tabular data \cite{zhang2023} and is presented as our own extension. The scaler, the PCA and the classifiers are fitted on the training set only.
+
+The initial design used ResNet-50 with frozen ImageNet weights, so that the SVM and the Random Forest would not depend on the fine-tuned network. On validation they performed poorly (macro F1 of 0.64 and 0.60), so the already fine-tuned ResNet-50 was adopted as the extractor (F1 of 0.80 and 0.79). The cost is that models 3 and 4 depend on model 2. The ImageNet version is kept as an ablation (Section~\ref{sec:res_q2}). As course baselines, a logistic regression and a KNN were also trained on the same features; they are not among the four models.
+
+% ---------------------------------------------------------------------
+\subsection{Evaluation Protocol}
+\label{sec:protocol}
+The four models use the same patient-level split (Table~\ref{tab:split}) and the same seed (42). Epochs, hyperparameters and variants were chosen on validation; the test set was evaluated once, with the final configuration. The variants tried on validation (other seeds, learning rates, smoothing and ensembles) are recorded in the repository.
+
+The course guidelines recommend augmenting only the training set. Here, the validation and test sets were also augmented, to obtain the same count per class (Section~\ref{sec:augmentation}). Validation and test copies never enter training, so there is no leakage; even so, to keep near-identical copies from inflating the metrics, \textbf{the main results are computed on the 768 original test ROIs}, with the natural class proportions (42 Degeneration, 164 Normal and 562 Protrusion). The full, balanced test set with copies (5,253 images) is reported separately. With 768 images, the 95\% confidence interval of accuracy is about $\pm 2.2$ points (Wilson interval).
